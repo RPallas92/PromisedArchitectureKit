@@ -28,7 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0B69E4A3E34B224E58D61CE8 /* PromisedArchitectureKit.podspec */ = {isa = PBXFileReference; includeInIndex = 1; name = PromisedArchitectureKit.podspec; path = ../PromisedArchitectureKit.podspec; sourceTree = "<group>"; };
+		0B69E4A3E34B224E58D61CE8 /* PromisedArchitectureKit.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = PromisedArchitectureKit.podspec; path = ../PromisedArchitectureKit.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		1F088745895FAE4222BC146E /* Pods_PromisedArchitectureKit_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PromisedArchitectureKit_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		569B700219D2B7DFAF21D80A /* Pods-PromisedArchitectureKit_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Tests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Tests/Pods-PromisedArchitectureKit_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		607FACD01AFB9204008FA782 /* PromisedArchitectureKit_Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromisedArchitectureKit_Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -43,8 +43,8 @@
 		607FACEB1AFB9204008FA782 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
 		65512C8AA798893F357E5D30 /* Pods-PromisedArchitectureKit_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Example.release.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Example/Pods-PromisedArchitectureKit_Example.release.xcconfig"; sourceTree = "<group>"; };
 		77E8EF41A44D0621ED9E8B66 /* Pods-PromisedArchitectureKit_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Tests.release.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Tests/Pods-PromisedArchitectureKit_Tests.release.xcconfig"; sourceTree = "<group>"; };
-		B04B8626829CFFE73F3DBBAC /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
-		C30364477C3C2AA2B6547827 /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; name = README.md; path = ../README.md; sourceTree = "<group>"; };
+		B04B8626829CFFE73F3DBBAC /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
+		C30364477C3C2AA2B6547827 /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		D632545AC04FD8B9F3D6B2A9 /* Pods-PromisedArchitectureKit_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Example.debug.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Example/Pods-PromisedArchitectureKit_Example.debug.xcconfig"; sourceTree = "<group>"; };
 		FF6A1FA091D71A80D224570D /* Pods_PromisedArchitectureKit_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PromisedArchitectureKit_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -213,10 +213,12 @@
 				TargetAttributes = {
 					607FACCF1AFB9204008FA782 = {
 						CreatedOnToolsVersion = 6.3.1;
+						DevelopmentTeam = 4Z8G52XB6J;
 						LastSwiftMigration = 0900;
 					};
 					607FACE41AFB9204008FA782 = {
 						CreatedOnToolsVersion = 6.3.1;
+						DevelopmentTeam = 4Z8G52XB6J;
 						LastSwiftMigration = 0900;
 						TestTargetID = 607FACCF1AFB9204008FA782;
 					};
@@ -305,10 +307,12 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/Pods/Target Support Files/Pods-PromisedArchitectureKit_Example/Pods-PromisedArchitectureKit_Example-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/PromiseKit/PromiseKit.framework",
 				"${BUILT_PRODUCTS_DIR}/PromisedArchitectureKit/PromisedArchitectureKit.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/PromiseKit.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/PromisedArchitectureKit.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -490,10 +494,11 @@
 			baseConfigurationReference = D632545AC04FD8B9F3D6B2A9 /* Pods-PromisedArchitectureKit_Example.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = 4Z8G52XB6J;
 				INFOPLIST_FILE = PromisedArchitectureKit/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rpallas92.promisedArchitectureKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 4.0;
@@ -505,10 +510,11 @@
 			baseConfigurationReference = 65512C8AA798893F357E5D30 /* Pods-PromisedArchitectureKit_Example.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				DEVELOPMENT_TEAM = 4Z8G52XB6J;
 				INFOPLIST_FILE = PromisedArchitectureKit/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.rpallas92.promisedArchitectureKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 4.0;
@@ -519,6 +525,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 569B700219D2B7DFAF21D80A /* Pods-PromisedArchitectureKit_Tests.debug.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = 4Z8G52XB6J;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(inherited)",
@@ -541,6 +548,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 77E8EF41A44D0621ED9E8B66 /* Pods-PromisedArchitectureKit_Tests.release.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = 4Z8G52XB6J;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(inherited)",

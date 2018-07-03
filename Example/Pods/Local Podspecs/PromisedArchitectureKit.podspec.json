@@ -1,0 +1,27 @@
+{
+  "name": "PromisedArchitectureKit",
+  "version": "0.1.0",
+  "summary": "A short description of PromisedArchitectureKit.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/rpallas92/PromisedArchitectureKit",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "rpallas92": "ricardo.pallas@adidas-group.com"
+  },
+  "source": {
+    "git": "https://github.com/rpallas92/PromisedArchitectureKit.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "PromisedArchitectureKit/Classes/**/*",
+  "dependencies": {
+    "PromiseKit": [
+      "~> 6.0"
+    ]
+  }
+}
