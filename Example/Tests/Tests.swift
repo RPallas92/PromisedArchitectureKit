@@ -6,6 +6,14 @@ import PromisedArchitectureKit
 
 class TableOfContentsSpec: QuickSpec {
     override func spec() {
+        
+        describe("System") {
+            
+            it("can do maths") {
+                expect(1) == 2
+            }
+        }
+        
         describe("these will fail") {
 
             it("can do maths") {

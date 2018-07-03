@@ -18,7 +18,7 @@ public class Action<State,Event> {
     
     func notify(_ action: Event) {
         listeners.forEach { system in
-            // system.onAction(action) TODO
+            system.onAction(action)
         }
     }
 }

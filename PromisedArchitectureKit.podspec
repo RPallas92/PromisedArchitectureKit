@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'PromisedArchitectureKit'
-  s.version          = '0.1.1'
+  s.version          = '0.1.4'
   s.summary          = 'A short description of PromisedArchitectureKit.'
 
 # This description is used to generate tags and improve search results.
@@ -30,7 +30,7 @@ TODO: Add long description of the pod here.
 
   s.ios.deployment_target = '8.0'
 
-  s.source_files = 'PromisedArchitectureKit/Classes/**/*'
+  s.source_files = 'Classes/**/*'
   
   # s.resource_bundles = {
   #   'PromisedArchitectureKit' => ['PromisedArchitectureKit/Assets/*.png']
