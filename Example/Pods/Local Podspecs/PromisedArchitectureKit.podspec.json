@@ -1,6 +1,6 @@
 {
   "name": "PromisedArchitectureKit",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "summary": "A short description of PromisedArchitectureKit.",
   "description": "TODO: Add long description of the pod here.",
   "homepage": "https://github.com/rpallas92/PromisedArchitectureKit",
@@ -13,12 +13,12 @@
   },
   "source": {
     "git": "https://github.com/rpallas92/PromisedArchitectureKit.git",
-    "tag": "0.1.0"
+    "tag": "0.1.4"
   },
   "platforms": {
     "ios": "8.0"
   },
-  "source_files": "PromisedArchitectureKit/Classes/**/*",
+  "source_files": "Classes/**/*",
   "dependencies": {
     "PromiseKit": [
       "~> 6.0"

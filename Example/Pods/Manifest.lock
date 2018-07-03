@@ -1,15 +1,15 @@
 PODS:
   - Nimble (7.0.3)
-  - PromisedArchitectureKit (0.1.0):
+  - PromisedArchitectureKit (0.1.4):
     - PromiseKit (~> 6.0)
-  - PromiseKit (6.2.8):
-    - PromiseKit/CorePromise (= 6.2.8)
-    - PromiseKit/Foundation (= 6.2.8)
-    - PromiseKit/UIKit (= 6.2.8)
-  - PromiseKit/CorePromise (6.2.8)
-  - PromiseKit/Foundation (6.2.8):
+  - PromiseKit (6.3.4):
+    - PromiseKit/CorePromise (= 6.3.4)
+    - PromiseKit/Foundation (= 6.3.4)
+    - PromiseKit/UIKit (= 6.3.4)
+  - PromiseKit/CorePromise (6.3.4)
+  - PromiseKit/Foundation (6.3.4):
     - PromiseKit/CorePromise
-  - PromiseKit/UIKit (6.2.8):
+  - PromiseKit/UIKit (6.3.4):
     - PromiseKit/CorePromise
   - Quick (1.2.0)
 
@@ -30,8 +30,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Nimble: 7f5a9c447a33002645a071bddafbfb24ea70e0ac
-  PromisedArchitectureKit: 98967be651034a369d6b03fe460fe55b050eeabf
-  PromiseKit: 6788ce1a0ed5448b83d4aaf56b9fc49fb7647d32
+  PromisedArchitectureKit: 283c2ba79d8415b038b6d69e4f73cd192bdd8fcb
+  PromiseKit: e1425568123ec844a944c93f2bcb29d511d39cf5
   Quick: 58d203b1c5e27fff7229c4c1ae445ad7069a7a08
 
 PODFILE CHECKSUM: 26387c6b384b6732b0a5f2d9eeffc163cb85c390
