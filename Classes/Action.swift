@@ -36,7 +36,7 @@ public class CustomAction<State,Event>: Action<State, Event> {
     }
 }
 
-public class UIButtonAction<State,Event,ErrorType, Context>: Action<State, Event> {
+public class UIButtonAction<State,Event>: Action<State, Event> {
     
     var events = [UIControlEvents.RawValue: Event]()
     let button: UIButton
@@ -45,7 +45,7 @@ public class UIButtonAction<State,Event,ErrorType, Context>: Action<State, Event
         self.button = button
     }
     
-    public static func onTap(in button: UIButton, trigger event: Event) -> UIButtonAction<State,Event,ErrorType, Context> {
+    public static func onTap(in button: UIButton, trigger event: Event) -> UIButtonAction<State,Event> {
         let action = UIButtonAction(button: button)
         action.events[UIControlEvents.touchUpInside.rawValue] = event
         action.button.addTarget(self, action:#selector(self.didTap), for: .touchUpInside)

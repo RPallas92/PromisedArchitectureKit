@@ -16,6 +16,7 @@
 		6337DFD038ADC21807832FC2 /* Pods_PromisedArchitectureKit_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F088745895FAE4222BC146E /* Pods_PromisedArchitectureKit_Example.framework */; };
 		787F9410AB2CF3B1F0F5BEB3 /* Pods_PromisedArchitectureKit_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF6A1FA091D71A80D224570D /* Pods_PromisedArchitectureKit_Tests.framework */; };
 		96DD3B1520EB99F50081F02F /* ArchitectureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DD3B1420EB99F50081F02F /* ArchitectureTests.swift */; };
+		96DD3B1B20ED06CC0081F02F /* Presenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DD3B1A20ED06CC0081F02F /* Presenter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		65512C8AA798893F357E5D30 /* Pods-PromisedArchitectureKit_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Example.release.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Example/Pods-PromisedArchitectureKit_Example.release.xcconfig"; sourceTree = "<group>"; };
 		77E8EF41A44D0621ED9E8B66 /* Pods-PromisedArchitectureKit_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Tests.release.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Tests/Pods-PromisedArchitectureKit_Tests.release.xcconfig"; sourceTree = "<group>"; };
 		96DD3B1420EB99F50081F02F /* ArchitectureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchitectureTests.swift; sourceTree = "<group>"; };
+		96DD3B1A20ED06CC0081F02F /* Presenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Presenter.swift; sourceTree = "<group>"; };
 		B04B8626829CFFE73F3DBBAC /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
 		C30364477C3C2AA2B6547827 /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		D632545AC04FD8B9F3D6B2A9 /* Pods-PromisedArchitectureKit_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PromisedArchitectureKit_Example.debug.xcconfig"; path = "Pods/Target Support Files/Pods-PromisedArchitectureKit_Example/Pods-PromisedArchitectureKit_Example.debug.xcconfig"; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 			children = (
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
 				607FACD71AFB9204008FA782 /* ViewController.swift */,
+				96DD3B1A20ED06CC0081F02F /* Presenter.swift */,
 				607FACD91AFB9204008FA782 /* Main.storyboard */,
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
@@ -350,6 +353,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				96DD3B1B20ED06CC0081F02F /* Presenter.swift in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
 			);

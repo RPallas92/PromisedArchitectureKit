@@ -85,13 +85,16 @@ class ArchitectureKitTests: XCTestCase {
             Feedback<State, Event>.react({_ in loadCategories()}, when: { $0.shouldLoadData})
         ]
         
-        let action = CustomAction<State, Event>(trigger: Event.loadCategories)
+        let button = UIButton()
+        
+        // let action = CustomAction<State, Event>(trigger: Event.loadCategories)
+        let action2 = UIButtonAction<State,Event>.onTap(in: button, trigger: Event.loadCategories)
         
         let system = TestSystem.pure(
             initialState: initialState,
             reducer: State.reduce,
             uiBindings: uiBindings,
-            actions: [action],
+            actions: [action2],
             feedback: feedback
         )
         
@@ -100,7 +103,9 @@ class ArchitectureKitTests: XCTestCase {
         }
         
         //Simulate user interaction - Tap button
-        action.execute()
+        //action.execute()
+        
+        button.sendActions(for: .touchUpInside)
         wait(for: [expect], timeout: 10.0)
     }
     

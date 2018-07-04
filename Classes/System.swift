@@ -70,7 +70,11 @@ public final class System<State, Event> {
         actions: [Action<State, Event>],
         feedback: [Feedback<State, Event>]
         ) -> System {
-        return System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, feedback: feedback)
+        
+        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, feedback: feedback)
+        
+        let _ = system.bindUI(initialState).done { }
+        return system
     }
     
     public func addLoopCallback(callback: @escaping ()->()){

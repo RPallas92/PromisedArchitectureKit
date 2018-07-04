@@ -8,16 +8,44 @@
 
 import UIKit
 
-class ViewController: UIViewController {
-
+class ViewController: UIViewController, View {
+    
+    var presenter: Presenter! = nil
+    var indicator: UIActivityIndicatorView! = nil
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
+        
+        addLoadingIndicator()
+        presenter = Presenter(view: self)
+        
+        presenter.controllerLoaded()
+    }
+    
+    private func addLoadingIndicator() {
+        indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
+        indicator.center = view.center
+        self.view.addSubview(indicator)
+        self.view.bringSubview(toFront: indicator)
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
 
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    func updateUI(state: State) {
+        
+        if state.dataState == .loading {
+            showLoading()
+        } else {
+            hideLoading()
+        }
+    }
+    
+    private func showLoading() {
+        indicator.startAnimating()
+    }
+    
+    private func hideLoading() {
+        indicator.stopAnimating()
     }
 
 }
