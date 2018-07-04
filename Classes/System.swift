@@ -8,16 +8,16 @@
 import Foundation
 import PromiseKit
 
-public struct Feedback<State, Event> {
+public struct Reaction<State, Event> {
     
     internal var condition: (State) -> (Bool)
     internal var action: (State) -> Promise<Event>
     
-    public static func react(_ action: @escaping (State) -> Promise<Event>, when condition: @escaping (State) -> (Bool)) -> Feedback {
-        return Feedback(condition: condition, action: action)
+    public static func react(_ action: @escaping (State) -> Promise<Event>, when condition: @escaping (State) -> (Bool)) -> Reaction {
+        return Reaction(condition: condition, action: action)
     }
     
-    func getStateAfterFeedback(from state:State, with reducer:@escaping ((State, Event) -> State)) -> Promise<State> {
+    func getStateAfterReaction(from state:State, with reducer:@escaping ((State, Event) -> State)) -> Promise<State> {
         if self.condition(state) {
             return self.action(state).map { newEvent in
                 reducer(state,newEvent)
@@ -31,7 +31,7 @@ public struct Feedback<State, Event> {
 public final class System<State, Event> {
     
     typealias SystemAction = Action<State, Event>
-    typealias SystemFeedback = Feedback<State, Event>
+    typealias SystemReaction = Reaction<State, Event>
     
     internal var eventQueue = [Event]()
     internal var callback: (() -> ())? = nil
@@ -40,7 +40,7 @@ public final class System<State, Event> {
     internal var reducer: (State, Event) -> State
     internal var uiBindings: [(State) -> ()]
     internal var actions: [SystemAction]
-    internal var feedback: [SystemFeedback]
+    internal var reactions: [SystemReaction]
     internal var currentState: State
     
     private init(
@@ -48,14 +48,14 @@ public final class System<State, Event> {
         reducer: @escaping (State, Event) -> State,
         uiBindings: [(State) -> ()],
         actions: [SystemAction],
-        feedback: [SystemFeedback]
+        reactions: [SystemReaction]
         ) {
         
         self.initialState = initialState
         self.reducer = reducer
         self.uiBindings = uiBindings
         self.actions = actions
-        self.feedback = feedback
+        self.reactions = reactions
         self.currentState = initialState
         
         self.actions.forEach { action in
@@ -68,10 +68,10 @@ public final class System<State, Event> {
         reducer: @escaping (State, Event) -> State,
         uiBindings: [(State) -> ()],
         actions: [Action<State, Event>],
-        feedback: [Feedback<State, Event>]
+        reactions: [Reaction<State, Event>]
         ) -> System {
         
-        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, feedback: feedback)
+        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, reactions: reactions)
         
         let _ = system.bindUI(initialState).done { }
         return system
@@ -111,7 +111,7 @@ public final class System<State, Event> {
                 self.reducer(self.currentState, event)
             }
             .then { state -> Promise<State> in
-                self.getStateAfterAllFeedback(from: state, maxFeedbackLoops: maxFeedbackLoops)
+                self.getStateAfterAllReactions(from: state, maxFeedbackLoops: maxFeedbackLoops)
             }
             .map { state in
                 self.currentState = state
@@ -123,20 +123,20 @@ public final class System<State, Event> {
         
     }
     
-    private func getStateAfterAllFeedback(from state: State, maxFeedbackLoops: Int) -> Promise<State> {
-        if self.feedback.count > 0 && maxFeedbackLoops > 0 {
+    private func getStateAfterAllReactions(from state: State, maxFeedbackLoops: Int) -> Promise<State> {
+        if self.reactions.count > 0 && maxFeedbackLoops > 0 {
             
-            let computedStateFeedback = runFeedback(from: state)
+            let computedStateReaction = runReaction(from: state)
         
-            return computedStateFeedback.then { arg -> Promise<State> in
+            return computedStateReaction.then { arg -> Promise<State> in
                 let (_ ,newState) = arg
                 
-                let anyFeedbackElse = self.feedback.reduce(false, { (otherLoopRequired, feedback) -> Bool in
+                let anyFeedbackElse = self.reactions.reduce(false, { (otherLoopRequired, feedback) -> Bool in
                     otherLoopRequired || feedback.condition(newState)
                 })
                 
                 if anyFeedbackElse {
-                    return self.getStateAfterAllFeedback(from: newState, maxFeedbackLoops: maxFeedbackLoops - 1)
+                    return self.getStateAfterAllReactions(from: newState, maxFeedbackLoops: maxFeedbackLoops - 1)
                 } else {
                     return Promise.value(newState)
                 }
@@ -146,18 +146,18 @@ public final class System<State, Event> {
         }
     }
     
-    private func runFeedback(from state:State) -> Promise<(SystemFeedback,State)> {
+    private func runReaction(from state:State) -> Promise<(SystemReaction,State)> {
         
-        let firstFeedback = self.feedback.first!
+        let firstFeedback = self.reactions.first!
         let initialValue = Promise.value((firstFeedback, state))
         
-        return self.feedback.reduce(
+        return self.reactions.reduce(
             initialValue,
-            { (previousFeedbackAndState, feedback) -> Promise<(SystemFeedback,State)> in
-                previousFeedbackAndState.then({ (_, state) -> Promise<(SystemFeedback,State)> in
-                    feedback.getStateAfterFeedback(from: state, with: self.reducer)
+            { (previousReactionAndState, reaction) -> Promise<(SystemReaction,State)> in
+                previousReactionAndState.then({ (_, state) -> Promise<(SystemReaction,State)> in
+                    reaction.getStateAfterReaction(from: state, with: self.reducer)
                         .map { newState in
-                            (feedback, newState)
+                            (reaction, newState)
                     }
                 })
         })
