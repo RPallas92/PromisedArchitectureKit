@@ -7,19 +7,25 @@
 //
 
 import UIKit
+import PromisedArchitectureKit
 
 class ViewController: UIViewController, View {
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
+    var loadProductAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         addLoadingIndicator()
-        presenter = Presenter(view: self)
-        
+        loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
+        presenter = Presenter(view: self, actions: [loadProductAction])
         presenter.controllerLoaded()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadProductAction.execute()
     }
     
     private func addLoadingIndicator() {

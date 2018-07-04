@@ -95,27 +95,24 @@ class Presenter {
     
     var system: System<State, Event>?
     let view: View
-    var loadProductAction: CustomAction<State, Event>!
+    let actions: [Action<State, Event>]
     
-    init(view: View) {
+    init(view: View, actions: [Action<State, Event>]) {
         self.view = view
+        self.actions = actions
     }
     
     func controllerLoaded() {
         
-        let feedback = Feedback<State,Event>.react({ _ in self.getProduct().map { Event.productLoaded($0)} }, when: { $0.shouldLoadProduct })
-        
-        self.loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
+        let loadProductReaction = Reaction<State,Event>.react({ _ in self.getProduct().map { Event.productLoaded($0)} }, when: { $0.shouldLoadProduct })
 
         self.system = System.pure(
             initialState: State.empty,
             reducer: State.reduce,
             uiBindings: [view.updateUI],
-            actions: [loadProductAction],
-            feedback: [feedback]
+            actions: actions,
+            reactions: [loadProductReaction]
         )
-        
-        loadProductAction.execute()
     }
     
     func getProduct() -> Promise<Product> {
@@ -125,5 +122,4 @@ class Presenter {
             }
         }
     }
-
 }
