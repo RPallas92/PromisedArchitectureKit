@@ -73,7 +73,7 @@ public final class System<State, Event> {
         
         let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, reactions: reactions)
         
-        let _ = system.bindUI(initialState).done { }
+        let _ = system.bindUI(initialState).done { _ in }
         return system
     }
     
@@ -89,26 +89,30 @@ public final class System<State, Event> {
             self.eventQueue.append(action)
         } else {
             actionExecuting = true
-            let _ = doLoop(action).done {
+            let _ = doLoop(action).done { _ in
                 assert(Thread.isMainThread, "PromisedArchitectureKit: Final callback must be run on main thread")
                 if let callback = self.callback {
                     callback()
-                    self.actionExecuting = false
-                    if let nextEvent = self.eventQueue.first {
-                        self.eventQueue.removeFirst()
-                        self.onAction(nextEvent)
-                    }
                 }
+                self.actionExecuting = false
+                if let nextEvent = self.eventQueue.first {
+                    self.eventQueue.removeFirst()
+                    self.onAction(nextEvent)
+                }
+                
             }
         }
     }
     
-    private func doLoop(_ event: Event) -> Promise<Void> {
+    private func doLoop(_ event: Event) -> Promise<State> {
         let maxFeedbackLoops = 5
         
         return Promise.value(event)
             .map { event in
                 self.reducer(self.currentState, event)
+            }
+            .then { state -> Promise<State> in
+                self.bindUI(state)
             }
             .then { state -> Promise<State> in
                 self.getStateAfterAllReactions(from: state, maxFeedbackLoops: maxFeedbackLoops)
@@ -117,7 +121,7 @@ public final class System<State, Event> {
                 self.currentState = state
                 return state
             }
-            .then { state -> Promise<Void> in
+            .then { state -> Promise<State> in
                 self.bindUI(state)
         }
         
@@ -127,7 +131,7 @@ public final class System<State, Event> {
         if self.reactions.count > 0 && maxFeedbackLoops > 0 {
             
             let computedStateReaction = runReaction(from: state)
-        
+            
             return computedStateReaction.then { arg -> Promise<State> in
                 let (_ ,newState) = arg
                 
@@ -163,12 +167,12 @@ public final class System<State, Event> {
         })
     }
     
-    private func bindUI(_ state: State) -> Promise<Void> {
-        return Promise<Void> { seal in
+    private func bindUI(_ state: State) -> Promise<State> {
+        return Promise<State> { seal in
             self.uiBindings.forEach { uiBinding in
                 uiBinding(state)
             }
-            seal.fulfill(())
+            seal.fulfill(state)
         }
     }
 }

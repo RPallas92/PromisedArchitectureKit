@@ -11,21 +11,33 @@ import PromisedArchitectureKit
 
 class ViewController: UIViewController, View {
     
+    @IBOutlet weak var productTitleLabel: UILabel!
+    @IBOutlet weak var cartLabel: UILabel!
+    @IBOutlet weak var errorLabel: UILabel!
+    @IBOutlet weak var buyButton: UIButton!
+    
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
     var loadProductAction: CustomAction<State, Event>! = nil
+    var addToCartAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
-        presenter = Presenter(view: self, actions: [loadProductAction])
+        initActions()
+        
+        presenter = Presenter(view: self, actions: [loadProductAction, addToCartAction])
         presenter.controllerLoaded()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         loadProductAction.execute()
+    }
+    
+    private func initActions() {
+        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
+        addToCartAction = CustomAction<State, Event>(trigger: Event.willAddToCart)
     }
     
     private func addLoadingIndicator() {
@@ -36,16 +48,60 @@ class ViewController: UIViewController, View {
         self.view.bringSubview(toFront: indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
+    
+    // MARK: - User Actions
+    @IBAction func didTapRefresh(_ sender: Any) {
+        loadProductAction.execute()
+    }
+    
+    @IBAction func didTapAddToCart(_ sender: Any) {
+        addToCartAction.execute()
+    }
 
+    // MARK: - User Outputs
     func updateUI(state: State) {
-
-        if case state = State.loading {
+        
+        switch state {
+        case .start:
+            print("Starting")
+            disableBuyButton()
+            
+        case .loading:
             showLoading()
-        } else {
+            disableBuyButton()
+            
+        case .showProduct(let product):
             hideLoading()
+            productTitleLabel.text = product
+            disableBuyButton()
+            
+        case .addingToCart(_):
+            showLoading()
+            disableBuyButton()
+            
+        case .showDidAddToCart(let product):
+            hideLoading()
+            cartLabel.text = product
+            enableBuyButton()
+
+        case .showError(let errorDescription):
+            hideLoading()
+            errorLabel.text = errorDescription
+            disableBuyButton()
         }
         
         print(state)
+    }
+    
+    private func enableBuyButton() {
+        buyButton.alpha = 1.0
+        buyButton.isEnabled = true
+    }
+    
+    private func disableBuyButton() {
+        buyButton.alpha = 0.30
+        buyButton.isEnabled = false
+
     }
     
     private func showLoading() {
