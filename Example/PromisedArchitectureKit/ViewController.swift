@@ -18,7 +18,7 @@ class ViewController: UIViewController, View {
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
+        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
         presenter = Presenter(view: self, actions: [loadProductAction])
         presenter.controllerLoaded()
     }
@@ -38,12 +38,14 @@ class ViewController: UIViewController, View {
     }
 
     func updateUI(state: State) {
-        
-        if state.dataState == .loading {
+
+        if case state = State.loading {
             showLoading()
         } else {
             hideLoading()
         }
+        
+        print(state)
     }
     
     private func showLoading() {
