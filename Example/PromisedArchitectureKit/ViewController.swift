@@ -60,7 +60,11 @@ class ViewController: UIViewController, View {
 
     // MARK: - User Outputs
     func updateUI(state: State) {
-        
+        hideLoading()
+        disableBuyButton()
+        productTitleLabel.text = ""
+        cartLabel.text = ""
+
         switch state {
         case .start:
             print("Starting")
@@ -68,26 +72,19 @@ class ViewController: UIViewController, View {
             
         case .loading:
             showLoading()
-            disableBuyButton()
             
         case .showProduct(let product):
-            hideLoading()
             productTitleLabel.text = product
-            disableBuyButton()
             
         case .addingToCart(_):
             showLoading()
-            disableBuyButton()
             
         case .showDidAddToCart(let product):
-            hideLoading()
             cartLabel.text = product
             enableBuyButton()
 
         case .showError(let errorDescription):
-            hideLoading()
             errorLabel.text = errorDescription
-            disableBuyButton()
         }
         
         print(state)
