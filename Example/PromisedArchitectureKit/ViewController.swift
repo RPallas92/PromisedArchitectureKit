@@ -62,8 +62,7 @@ class ViewController: UIViewController, View {
     func updateUI(state: State) {
         hideLoading()
         disableBuyButton()
-        productTitleLabel.text = ""
-        cartLabel.text = ""
+        cartLabel.text = "No products"
 
         switch state {
         case .start:
