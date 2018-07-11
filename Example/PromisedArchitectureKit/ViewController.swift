@@ -78,7 +78,7 @@ class ViewController: UIViewController, View {
         case .addingToCart(_):
             showLoading()
             
-        case .showDidAddToCart(let product):
+        case .showProductDidAddToCart(let product):
             cartLabel.text = product
             enableBuyButton()
 
@@ -97,7 +97,6 @@ class ViewController: UIViewController, View {
     private func disableBuyButton() {
         buyButton.alpha = 0.30
         buyButton.isEnabled = false
-
     }
     
     private func showLoading() {

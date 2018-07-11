@@ -32,7 +32,7 @@ enum State: Equatable {
     case showProduct(Product)
     case showError(String)
     case addingToCart(Product)
-    case showDidAddToCart(Product)
+    case showProductDidAddToCart(Product)
     
     static func reduce(state: State, event: Event) -> State {
         switch event {
@@ -51,7 +51,7 @@ enum State: Equatable {
             return .addingToCart(product)
             
         case .didAddToCart(let product):
-            return .showDidAddToCart(product)
+            return .showProductDidAddToCart(product)
         }
     }
 }
@@ -69,30 +69,31 @@ class Presenter {
     }
     
     func controllerLoaded() {
-        
-        let loadProductReaction = Reaction<State,Event>.react({ _ in
-            self.getProduct().map {
-                Event.didLoadProduct($0)}
-            
-        }, when: {
-            $0 == State.loading }
+
+        self.system = System.pure(
+            initialState: State.start,
+            reducer: State.reduce,
+            uiBindings: [view.updateUI],
+            actions: actions,
+            reactions: reactions()
         )
+    }
+    
+    func reactions() -> [Reaction<State,Event>]{
+        let loadingReaction = Reaction<State,Event>.react({ _ in
+            self.getProduct().map { Event.didLoadProduct($0) }
+        }, when: {
+            $0 == State.loading
+        })
         
-        let addToCartReaction = Reaction<State,Event>.react({ state in
+        let addingToCartReaction = Reaction<State,Event>.react({ state in
             guard case let .addingToCart(product) = state else { preconditionFailure() }
             return self.addToCart(product: product).map { Event.didAddToCart($0)}
         }, when: { state in
             guard case let .addingToCart(product) = state else { return false }
             return state == State.addingToCart(product)
         })
-        
-        self.system = System.pure(
-            initialState: State.start,
-            reducer: State.reduce,
-            uiBindings: [view.updateUI],
-            actions: actions,
-            reactions: [loadProductReaction, addToCartReaction]
-        )
+        return [loadingReaction, addingToCartReaction]
     }
     
     func getProduct() -> Promise<Product> {
