@@ -22,7 +22,7 @@ pod 'PromisedArchitectureKit'
 
 ## Author
 
-rpallas92, ricardo.pallas@adidas-group.com
+Ricardo Pallás
 
 ## License
 
