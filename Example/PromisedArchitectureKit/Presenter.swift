@@ -47,8 +47,19 @@ enum State: Equatable {
             return .showError(errorDescription)
             
         case .willAddToCart:
-            guard case let .showProduct(product) = state else { preconditionFailure() }
-            return .addingToCart(product)
+            var product: Product? {
+                switch state {
+                case let .showProduct(product): return product
+                case let .showProductDidAddToCart(product): return product
+                default: return nil
+                }
+            }
+            
+            if let product = product {
+                return .addingToCart(product)
+            } else {
+                return .showError("No product")
+            }
             
         case .didAddToCart(let product):
             return .showProductDidAddToCart(product)
@@ -88,7 +99,13 @@ class Presenter {
         
         let addingToCartReaction = Reaction<State,Event>.react({ state in
             guard case let .addingToCart(product) = state else { preconditionFailure() }
-            return self.addToCart(product: product).map { Event.didAddToCart($0)}
+            return self.addToCart(product: product)
+                .map { Event.didAddToCart($0)}
+                .recover({ error -> Promise<Event> in
+                    return Promise.value(Event.didThrowError("Error adding to cart"))
+                })
+            
+            
         }, when: { state in
             guard case let .addingToCart(product) = state else { return false }
             return state == State.addingToCart(product)
@@ -104,10 +121,19 @@ class Presenter {
         }
     }
     
+    // It returns error randomly
     func addToCart(product: Product) -> Promise<Product> {
         return Promise { seal in
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                seal.fulfill("\(product) added to cart")
+                let number = Int(arc4random_uniform(10))
+                
+                if number < 5 {
+                    seal.fulfill("\(product) added to cart")
+                    
+                } else {
+                    let error = NSError(domain: "Error", code: 2333, userInfo: nil)
+                    seal.reject(error)
+                }
             }
         }
     }
