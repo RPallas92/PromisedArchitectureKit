@@ -55,7 +55,7 @@ self.system = System.pure(
 ```
 
 ### The core concept
-Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum (i.e. Struct). For example, the state of a Ecommerce **Product detail page** app might look like this:
+Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum. For example, the state of a Ecommerce **Product detail page** app might look like this:
 
 ```swift
 enum State: Equatable {
