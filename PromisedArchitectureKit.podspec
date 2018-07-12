@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'PromisedArchitectureKit'
   s.version          = '0.1.4'
-  s.summary          = 'A short description of PromisedArchitectureKit.'
+  s.summary          = 'Simples architecture for PromiseKit'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
@@ -18,7 +18,10 @@ Pod::Spec.new do |s|
 #   * Finally, don't worry about the indent, CocoaPods strips it!
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+Simplest architecture for PromiseKit.
+This architectural approach, fits on the View layer of Clean Architecture. It is an alternative to Model-View-Presenter or Model-View-ViewModel, and it is strongly inspired by Redux.
+
+The idea is to constrain the changes to view state in order to enforce correctness. Changes to state are explicity documented by Events and by a pure reducer function. This approach also allows testing presentation logic with ease (it also includes a mechanism to inject dependencies, such views, API Clients, etc.)
                        DESC
 
   s.homepage         = 'https://github.com/rpallas92/PromisedArchitectureKit'
@@ -39,4 +42,5 @@ TODO: Add long description of the pod here.
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.frameworks = 'UIKit', 'MapKit'
   s.dependency 'PromiseKit', '~> 6.0'
+  s.swift_version = '3.2'
 end
