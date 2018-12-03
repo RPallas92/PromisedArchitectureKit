@@ -81,9 +81,6 @@ class ArchitectureKitTests: XCTestCase {
         
         let initialState = State.empty
         let uiBindings = [categoriesBinding, dummyBinding]
-        let reactions = [
-            Reaction<State, Event>.react({_ in loadCategories()}, when: { $0.shouldLoadData})
-        ]
         
         let button = UIButton()
         
@@ -94,8 +91,7 @@ class ArchitectureKitTests: XCTestCase {
             initialState: initialState,
             reducer: State.reduce,
             uiBindings: uiBindings,
-            actions: [action2],
-            reactions: reactions
+            actions: [action2]
         )
         
         system.addLoopCallback {

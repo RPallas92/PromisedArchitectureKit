@@ -36,8 +36,8 @@ class ViewController: UIViewController, View {
     }
     
     private func initActions() {
-        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
-        addToCartAction = CustomAction<State, Event>(trigger: Event.willAddToCart)
+        loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
+        addToCartAction = CustomAction<State, Event>(trigger: Event.addToCart)
     }
     
     private func addLoadingIndicator() {
@@ -60,33 +60,41 @@ class ViewController: UIViewController, View {
 
     // MARK: - User Outputs
     func updateUI(state: State) {
-        hideLoading()
+        showLoading()
         disableBuyButton()
         cartLabel.text = "No products"
+        errorLabel.text = ""
 
+        
         switch state {
-        case .start:
-            print("Starting")
-            disableBuyButton()
-            
         case .loading:
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
+        case .showingAddedToCart(_, let addToCartResult):
+            handleProductResult(addToCartResult, addingToCart: true)
             
-        case .addingToCart(_):
-            showLoading()
             
-        case .showProductDidAddToCart(let product):
-            cartLabel.text = product
-            enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
+        case .showingProduct(let productResult):
+            handleProductResult(productResult, addingToCart: false)
         }
-        
+
         print(state)
+    }
+    
+    private func handleProductResult(_ productResult: AsyncResult<Product>, addingToCart: Bool) {
+        productResult.fold(
+            loading: showLoading,
+            failure: { error in
+                self.errorLabel.text = error.localizedDescription
+                self.hideLoading()
+            },
+            success: { product in
+                self.cartLabel.text = product
+                self.hideLoading()
+                if addingToCart {
+                    self.enableBuyButton()
+                }
+        })
     }
     
     private func enableBuyButton() {

@@ -31,7 +31,6 @@ public struct Reaction<State, Event> {
 public final class System<State, Event> {
     
     typealias SystemAction = Action<State, Event>
-    typealias SystemReaction = Reaction<State, Event>
     
     internal var eventQueue = [Event]()
     internal var callback: (() -> ())? = nil
@@ -40,22 +39,19 @@ public final class System<State, Event> {
     internal var reducer: (State, Event) -> State
     internal var uiBindings: [(State) -> ()]
     internal var actions: [SystemAction]
-    internal var reactions: [SystemReaction]
     internal var currentState: State
     
     private init(
         initialState: State,
         reducer: @escaping (State, Event) -> State,
         uiBindings: [(State) -> ()],
-        actions: [SystemAction],
-        reactions: [SystemReaction]
+        actions: [SystemAction]
         ) {
         
         self.initialState = initialState
         self.reducer = reducer
         self.uiBindings = uiBindings
         self.actions = actions
-        self.reactions = reactions
         self.currentState = initialState
         
         self.actions.forEach { action in
@@ -67,11 +63,10 @@ public final class System<State, Event> {
         initialState: State,
         reducer: @escaping (State, Event) -> State,
         uiBindings: [(State) -> ()],
-        actions: [Action<State, Event>],
-        reactions: [Reaction<State, Event>]
+        actions: [Action<State, Event>]
         ) -> System {
         
-        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions, reactions: reactions)
+        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions)
         
         let _ = system.bindUI(initialState).done { _ in }
         return system
@@ -105,17 +100,9 @@ public final class System<State, Event> {
     }
     
     private func doLoop(_ event: Event) -> Promise<State> {
-        let maxFeedbackLoops = 5
-        
         return Promise.value(event)
             .map { event in
                 self.reducer(self.currentState, event)
-            }
-            .then { state -> Promise<State> in
-                self.bindUI(state)
-            }
-            .then { state -> Promise<State> in
-                self.getStateAfterAllReactions(from: state, maxFeedbackLoops: maxFeedbackLoops)
             }
             .map { state in
                 self.currentState = state
@@ -124,47 +111,6 @@ public final class System<State, Event> {
             .then { state -> Promise<State> in
                 self.bindUI(state)
         }
-        
-    }
-    
-    private func getStateAfterAllReactions(from state: State, maxFeedbackLoops: Int) -> Promise<State> {
-        if self.reactions.count > 0 && maxFeedbackLoops > 0 {
-            
-            let computedStateReaction = runReaction(from: state)
-            
-            return computedStateReaction.then { arg -> Promise<State> in
-                let (_ ,newState) = arg
-                
-                let anyFeedbackElse = self.reactions.reduce(false, { (otherLoopRequired, feedback) -> Bool in
-                    otherLoopRequired || feedback.condition(newState)
-                })
-                
-                if anyFeedbackElse {
-                    return self.getStateAfterAllReactions(from: newState, maxFeedbackLoops: maxFeedbackLoops - 1)
-                } else {
-                    return Promise.value(newState)
-                }
-            }
-        } else {
-            return Promise.value(state)
-        }
-    }
-    
-    private func runReaction(from state:State) -> Promise<(SystemReaction,State)> {
-        
-        let firstFeedback = self.reactions.first!
-        let initialValue = Promise.value((firstFeedback, state))
-        
-        return self.reactions.reduce(
-            initialValue,
-            { (previousReactionAndState, reaction) -> Promise<(SystemReaction,State)> in
-                previousReactionAndState.then({ (_, state) -> Promise<(SystemReaction,State)> in
-                    reaction.getStateAfterReaction(from: state, with: self.reducer)
-                        .map { newState in
-                            (reaction, newState)
-                    }
-                })
-        })
     }
     
     private func bindUI(_ state: State) -> Promise<State> {
