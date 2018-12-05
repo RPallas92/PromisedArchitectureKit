@@ -15,7 +15,7 @@ public class AsyncResult<T> {
     fileprivate var result: T?
     fileprivate var error: Error?
     fileprivate var isLoading = false
-    
+
     public init(_ promise: Promise<T>) {
         self.promise = promise
     }
@@ -77,7 +77,7 @@ public class AsyncResult<T> {
         
         return AsyncResult<T>(resultPromise)
     }
-    
+
     public func flatMap<U>(_ transformation: @escaping(T) -> (AsyncResult<U>)) -> AsyncResult<U>{
         
         let resultPromise = Promise<U> { seal in

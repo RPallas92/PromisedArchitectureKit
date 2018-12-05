@@ -11,9 +11,8 @@ import PromisedArchitectureKit
 import PromiseKit
 
 typealias Product = String
-typealias AddToCartResult = String
 
-protocol View {
+protocol View: class {
     func updateUI(state: State)
 }
 
@@ -28,7 +27,7 @@ enum State {
     case showingProduct(Product)
     case showingError(Error)
     
-    static func reduce(state: State, event: Event) -> AsyncResult<State> { // TODO AsyncResultState
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
         case .loadProduct:
             let productResult = getProduct()
@@ -37,9 +36,7 @@ enum State {
                 .map { State.showingProduct($0) }
                 .mapErrorRecover { State.showingError($0) }
         }
-        
     }
-    
 }
 
 fileprivate func getProduct() -> AsyncResult<Product> {
@@ -52,27 +49,25 @@ fileprivate func getProduct() -> AsyncResult<Product> {
     return AsyncResult<Product>(promise)
 }
 
-
-
 // MARK: - Presenter
 class Presenter {
     
     var system: System<State, Event>?
-    let view: View
-    let actions: [Action<State, Event>]
+    weak var view: View?
     
-    init(view: View, actions: [Action<State, Event>]) {
+    init(view: View) {
         self.view = view
-        self.actions = actions
+    }
+    
+    func sendEvent(_ event: Event) {
+        system?.sendEvent(event)
     }
     
     func controllerLoaded() {
-        
-        self.system = System.pure(
+        system = System.pure(
             initialState: State.loading,
             reducer: State.reduce,
-            uiBindings: [view.updateUI],
-            actions: actions
+            uiBindings: [view?.updateUI]
         )
     }
     

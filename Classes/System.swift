@@ -9,44 +9,33 @@ import Foundation
 import PromiseKit
 
 public final class System<State, Event> {
-    
-    typealias SystemAction = Action<State, Event>
-    
+
     internal var eventQueue = [Event]()
     internal var callback: (() -> ())? = nil
     
     internal var initialState: State
     internal var reducer: (State, Event) -> AsyncResult<State>
-    internal var uiBindings: [(State) -> ()]
-    internal var actions: [SystemAction]
+    internal var uiBindings: [((State) -> ())?]
     internal var currentState: State
     
     private init(
         initialState: State,
         reducer: @escaping (State, Event) -> AsyncResult<State>,
-        uiBindings: [(State) -> ()],
-        actions: [SystemAction]
+        uiBindings: [((State) -> ())?]
         ) {
-        
         self.initialState = initialState
         self.reducer = reducer
         self.uiBindings = uiBindings
-        self.actions = actions
         self.currentState = initialState
-        
-        self.actions.forEach { action in
-            action.addListener(listener: self)
-        }
     }
     
     public static func pure(
         initialState: State,
         reducer: @escaping (State, Event) -> AsyncResult<State>,
-        uiBindings: [(State) -> ()],
-        actions: [Action<State, Event>]
+        uiBindings: [((State) -> ())?]
         ) -> System {
         
-        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings, actions: actions)
+        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings)
         
         let _ = system.bindUI(initialState).done { _ in }
         return system
@@ -58,7 +47,7 @@ public final class System<State, Event> {
     
     var actionExecuting = false
     
-    func onAction(_ action: Event) {
+    public func sendEvent(_ action: Event) {
         assert(Thread.isMainThread)
         if actionExecuting {
             self.eventQueue.append(action)
@@ -72,7 +61,7 @@ public final class System<State, Event> {
                 self.actionExecuting = false
                 if let nextEvent = self.eventQueue.first {
                     self.eventQueue.removeFirst()
-                    self.onAction(nextEvent)
+                    self.sendEvent(nextEvent)
                 }
                 
             }
@@ -96,7 +85,7 @@ public final class System<State, Event> {
     private func bindUI(_ state: State) -> Promise<State> {
         return Promise<State> { seal in
             self.uiBindings.forEach { uiBinding in
-                uiBinding(state)
+                uiBinding?(state)
             }
             seal.fulfill(state)
         }

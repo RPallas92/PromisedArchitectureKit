@@ -18,26 +18,18 @@ class ViewController: UIViewController, View {
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
-    var loadProductAction: CustomAction<State, Event>! = nil
-    var addToCartAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        initActions()
         
-        presenter = Presenter(view: self, actions: [loadProductAction])
+        presenter = Presenter(view: self)
         presenter.controllerLoaded()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadProductAction.execute()
-    }
-    
-    private func initActions() {
-        loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
-        // addToCartAction = CustomAction<State, Event>(trigger: Event.addToCart)
+        self.presenter.sendEvent(Event.loadProduct)
     }
     
     private func addLoadingIndicator() {
@@ -51,11 +43,11 @@ class ViewController: UIViewController, View {
     
     // MARK: - User Actions
     @IBAction func didTapRefresh(_ sender: Any) {
-        loadProductAction.execute()
+        self.presenter.sendEvent(Event.loadProduct)
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        // addToCartAction.execute()
+        // send event
     }
 
     // MARK: - User Outputs
@@ -64,35 +56,24 @@ class ViewController: UIViewController, View {
         disableBuyButton()
         cartLabel.text = "No products"
         errorLabel.text = ""
-
         
-        /*switch state {
+        
+        switch state {
         case .loading:
             showLoading()
             
+        case .showingProduct(let product):
+            cartLabel.text = product
+            hideLoading()
             
-        case .showingProduct(let productResult):
-            handleProductResult(productResult, addingToCart: false)
-        }*/
+        case .showingError(let error):
+            self.errorLabel.text = error.localizedDescription
+            self.hideLoading()
+        }
 
         print(state)
     }
     
-    private func handleProductResult(_ productResult: AsyncResult<Product>, addingToCart: Bool) {
-        productResult.fold(
-            loading: showLoading,
-            failure: { error in
-                self.errorLabel.text = error.localizedDescription
-                self.hideLoading()
-            },
-            success: { product in
-                self.cartLabel.text = product
-                self.hideLoading()
-                if addingToCart {
-                    self.enableBuyButton()
-                }
-        })
-    }
     
     private func enableBuyButton() {
         buyButton.alpha = 1.0
