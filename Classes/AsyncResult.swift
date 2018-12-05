@@ -107,13 +107,13 @@ public class AsyncResult<T> {
         return self
     }
     
-    static func parallel(_ asyncResults: [AsyncResult<T>]) -> AsyncResult<[T]> {
+    public static func parallel(_ asyncResults: [AsyncResult<T>]) -> AsyncResult<[T]> {
         let promises = asyncResults.map { $0.promise }
         let allPromise = when(fulfilled: promises)
         return AsyncResult<[T]>(allPromise)
     }
     
-    static func zip<A,B>(_ a: AsyncResult<A>, _ b: AsyncResult<B>) -> AsyncResult<(A,B)> {
+    public static func zip<A,B>(_ a: AsyncResult<A>, _ b: AsyncResult<B>) -> AsyncResult<(A,B)> {
         return a.flatMap { aValue -> AsyncResult<(A,B)> in
             return b.map { bValue  in
                 return (aValue,bValue)
@@ -121,7 +121,7 @@ public class AsyncResult<T> {
         }
     }
     
-    static func zip<A,B,C>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>) -> AsyncResult<(A,B,C)> {
+    public static func zip<A,B,C>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>) -> AsyncResult<(A,B,C)> {
         return AsyncResult.zip(a, b).flatMap { pair -> AsyncResult<(A,B,C)> in
             return c.map { cValue in
                 return (pair.0, pair.1, cValue)
@@ -129,7 +129,7 @@ public class AsyncResult<T> {
         }
     }
     
-    static func zip<A,B,C,D>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>) -> AsyncResult<(A,B,C,D)> {
+    public static func zip<A,B,C,D>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>) -> AsyncResult<(A,B,C,D)> {
         return AsyncResult.zip(a, b, c).flatMap { pair -> AsyncResult<(A,B,C,D)> in
             return d.map { dValue in
                 return (pair.0, pair.1, pair.2, dValue)
@@ -137,7 +137,7 @@ public class AsyncResult<T> {
         }
     }
     
-    static func zip<A,B,C,D,E>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>, _ e: AsyncResult<E>) -> AsyncResult<(A,B,C,D,E)> {
+    public static func zip<A,B,C,D,E>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>, _ e: AsyncResult<E>) -> AsyncResult<(A,B,C,D,E)> {
         return AsyncResult.zip(a, b, c, d).flatMap { pair -> AsyncResult<(A,B,C,D,E)> in
             return e.map { eValue in
                 return (pair.0, pair.1, pair.2, pair.3, eValue)

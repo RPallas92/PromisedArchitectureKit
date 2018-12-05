@@ -29,25 +29,25 @@ class ViewController: UIViewController, View {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        self.presenter.sendEvent(Event.loadProduct)
+        presenter.sendEvent(Event.loadProduct)
     }
     
     private func addLoadingIndicator() {
         indicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.gray)
         indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         indicator.center = view.center
-        self.view.addSubview(indicator)
-        self.view.bringSubviewToFront(indicator)
+        view.addSubview(indicator)
+        view.bringSubviewToFront(indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     // MARK: - User Actions
     @IBAction func didTapRefresh(_ sender: Any) {
-        self.presenter.sendEvent(Event.loadProduct)
+        presenter.sendEvent(Event.loadProduct)
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        // send event
+        presenter.sendEvent(Event.addToCart)
     }
 
     // MARK: - User Outputs
@@ -67,8 +67,13 @@ class ViewController: UIViewController, View {
             hideLoading()
             
         case .showingError(let error):
-            self.errorLabel.text = error.localizedDescription
-            self.hideLoading()
+            errorLabel.text = error.localizedDescription
+            hideLoading()
+            
+        case .showingAddedToCart(_, let cartResponse):
+            cartLabel.text = cartResponse
+            hideLoading()
+            enableBuyButton()
         }
 
         print(state)
