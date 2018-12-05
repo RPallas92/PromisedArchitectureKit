@@ -8,26 +8,6 @@
 import Foundation
 import PromiseKit
 
-public struct Reaction<State, Event> {
-    
-    internal var condition: (State) -> (Bool)
-    internal var action: (State) -> Promise<Event>
-    
-    public static func react(_ action: @escaping (State) -> Promise<Event>, when condition: @escaping (State) -> (Bool)) -> Reaction {
-        return Reaction(condition: condition, action: action)
-    }
-    
-    func getStateAfterReaction(from state:State, with reducer:@escaping ((State, Event) -> State)) -> Promise<State> {
-        if self.condition(state) {
-            return self.action(state).map { newEvent in
-                reducer(state,newEvent)
-            }
-        } else {
-            return Promise.value(state)
-        }
-    }
-}
-
 public final class System<State, Event> {
     
     typealias SystemAction = Action<State, Event>
@@ -36,14 +16,14 @@ public final class System<State, Event> {
     internal var callback: (() -> ())? = nil
     
     internal var initialState: State
-    internal var reducer: (State, Event) -> State
+    internal var reducer: (State, Event) -> AsyncResult<State>
     internal var uiBindings: [(State) -> ()]
     internal var actions: [SystemAction]
     internal var currentState: State
     
     private init(
         initialState: State,
-        reducer: @escaping (State, Event) -> State,
+        reducer: @escaping (State, Event) -> AsyncResult<State>,
         uiBindings: [(State) -> ()],
         actions: [SystemAction]
         ) {
@@ -61,7 +41,7 @@ public final class System<State, Event> {
     
     public static func pure(
         initialState: State,
-        reducer: @escaping (State, Event) -> State,
+        reducer: @escaping (State, Event) -> AsyncResult<State>,
         uiBindings: [(State) -> ()],
         actions: [Action<State, Event>]
         ) -> System {
@@ -101,8 +81,8 @@ public final class System<State, Event> {
     
     private func doLoop(_ event: Event) -> Promise<State> {
         return Promise.value(event)
-            .map { event in
-                self.reducer(self.currentState, event)
+            .then { event in
+                self.reducer(self.currentState, event).promise
             }
             .map { state in
                 self.currentState = state

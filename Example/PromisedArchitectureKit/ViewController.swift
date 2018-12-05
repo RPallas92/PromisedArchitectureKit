@@ -66,14 +66,14 @@ class ViewController: UIViewController, View {
         errorLabel.text = ""
 
         
-        switch state {
+        /*switch state {
         case .loading:
             showLoading()
             
             
         case .showingProduct(let productResult):
             handleProductResult(productResult, addingToCart: false)
-        }
+        }*/
 
         print(state)
     }

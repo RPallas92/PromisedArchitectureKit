@@ -23,29 +23,32 @@ enum Event {
 }
 
 // MARK: - State
-enum State: Equatable {
+enum State {
     case loading
-    case showingProduct(AsyncResult<Product>)
+    case showingProduct(Product)
+    case showingError(Error)
     
-    static func reduce(state: State, event: Event) -> State { // TODO AsyncResultState
+    static func reduce(state: State, event: Event) -> AsyncResult<State> { // TODO AsyncResultState
         switch event {
         case .loadProduct:
             let productResult = getProduct()
             
-            return .showingProduct(productResult)
+            return productResult
+                .map { State.showingProduct($0) }
+                .mapErrorRecover { State.showingError($0) }
         }
-            
+        
     }
     
 }
 
-private func getProduct() -> AsyncResult<Product> {
+fileprivate func getProduct() -> AsyncResult<Product> {
     let promise = Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             seal.fulfill("Yeezy 500")
         }
     }
-
+    
     return AsyncResult<Product>(promise)
 }
 
@@ -64,7 +67,7 @@ class Presenter {
     }
     
     func controllerLoaded() {
-
+        
         self.system = System.pure(
             initialState: State.loading,
             reducer: State.reduce,

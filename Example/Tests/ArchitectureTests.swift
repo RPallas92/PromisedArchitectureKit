@@ -35,18 +35,18 @@ struct State {
     
     static var empty = State(categories: [], shouldLoadData: false)
     
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
         case .loadCategories:
             var newState = state
             newState.shouldLoadData = true
             newState.categories = []
-            return newState
+            return AsyncResult(Promise.value(newState))
         case .categoriesLoaded(let categories):
             var newState = state
             newState.shouldLoadData = false
             newState.categories = categories
-            return newState
+            return AsyncResult(Promise.value(newState))
         }
     }
 }

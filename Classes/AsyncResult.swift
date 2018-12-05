@@ -10,7 +10,7 @@ import PromiseKit
 
 public class AsyncResult<T> {
     
-    fileprivate let promise: Promise<T>
+    public let promise: Promise<T>
     
     fileprivate var result: T?
     fileprivate var error: Error?
@@ -24,7 +24,7 @@ public class AsyncResult<T> {
         loading: @escaping () -> (),
         failure: @escaping (Error) -> (),
         success: @escaping (T) -> ()
-        )
+    )
     {
         loading()
         isLoading = true
@@ -57,8 +57,21 @@ public class AsyncResult<T> {
         let resultPromise = Promise<T> { seal in
             self.promise.done { result in
                 seal.fulfill(result)
-                }.catch { error in
-                    seal.reject(transformation(error))
+            }.catch { error in
+                seal.reject(transformation(error))
+            }
+        }
+        
+        return AsyncResult<T>(resultPromise)
+    }
+    
+    public func mapErrorRecover( _ transformation: @escaping (Error) -> (T)) -> AsyncResult<T> {
+        
+        let resultPromise = Promise<T> { seal in
+            self.promise.done { result in
+                seal.fulfill(result)
+            }.catch { error in
+                seal.fulfill(transformation(error))
             }
         }
         
