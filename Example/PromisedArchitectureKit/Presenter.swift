@@ -55,7 +55,7 @@ enum State: Equatable {
     
 }
 
-func getProduct() -> AsyncResult<Product> {
+private func getProduct() -> AsyncResult<Product> {
     let promise = Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             seal.fulfill("Yeezy 500")
@@ -65,7 +65,7 @@ func getProduct() -> AsyncResult<Product> {
 }
 
 // It returns error randomly
-func addToCart(_ productResult: AsyncResult<Product>) -> AsyncResult<AddToCartResult> {
+private func addToCart(_ productResult: AsyncResult<Product>) -> AsyncResult<AddToCartResult> {
     
     return productResult.flatMap { (product: Product) -> AsyncResult<AddToCartResult> in
         

@@ -12,9 +12,9 @@ public class AsyncResult<T: Equatable> {
     
     private let promise: Promise<T>
     
-    private var result: T?
-    private var error: Error?
-    private var isLoading = false
+    fileprivate var result: T?
+    fileprivate var error: Error?
+    fileprivate var isLoading = false
     
     public init(_ promise: Promise<T>) {
         self.promise = promise
