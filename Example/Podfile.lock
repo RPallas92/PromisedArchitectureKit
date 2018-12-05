@@ -23,7 +23,7 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  PromisedArchitectureKit: 5bb64d28cdbaf35acaa514b98fd8797f8989fecc
+  PromisedArchitectureKit: ca479fdc1364f6b1dd9474ec6aef2eb69168f9b4
   PromiseKit: e1425568123ec844a944c93f2bcb29d511d39cf5
 
 PODFILE CHECKSUM: 080eb5051e9a60074fe60befcdf5571873744176

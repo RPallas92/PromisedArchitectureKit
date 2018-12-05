@@ -1,6 +1,6 @@
 //
 //  AsyncResult.swift
-//  Fanatics
+//  PromisedArchitectureKit
 //
 //  Created by Pallas, Ricardo on 12/3/18.
 //
@@ -8,9 +8,9 @@
 import Foundation
 import PromiseKit
 
-public class AsyncResult<T: Equatable> {
+public class AsyncResult<T> {
     
-    private let promise: Promise<T>
+    fileprivate let promise: Promise<T>
     
     fileprivate var result: T?
     fileprivate var error: Error?
@@ -83,9 +83,47 @@ public class AsyncResult<T: Equatable> {
         return AsyncResult<U>(resultPromise)
     }
     
+    static func parallel(_ asyncResults: [AsyncResult<T>]) -> AsyncResult<[T]> {
+        let promises = asyncResults.map { $0.promise }
+        let allPromise = when(fulfilled: promises)
+        return AsyncResult<[T]>(allPromise)
+    }
+    
+    static func zip<A,B>(_ a: AsyncResult<A>, _ b: AsyncResult<B>) -> AsyncResult<(A,B)> {
+        return a.flatMap { aValue -> AsyncResult<(A,B)> in
+            return b.map { bValue  in
+                return (aValue,bValue)
+            }
+        }
+    }
+    
+    static func zip<A,B,C>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>) -> AsyncResult<(A,B,C)> {
+        return AsyncResult.zip(a, b).flatMap { pair -> AsyncResult<(A,B,C)> in
+            return c.map { cValue in
+                return (pair.0, pair.1, cValue)
+            }
+        }
+    }
+    
+    static func zip<A,B,C,D>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>) -> AsyncResult<(A,B,C,D)> {
+        return AsyncResult.zip(a, b, c).flatMap { pair -> AsyncResult<(A,B,C,D)> in
+            return d.map { dValue in
+                return (pair.0, pair.1, pair.2, dValue)
+            }
+        }
+    }
+    
+    static func zip<A,B,C,D,E>(_ a: AsyncResult<A>, _ b: AsyncResult<B>, _ c : AsyncResult<C>, _ d: AsyncResult<D>, _ e: AsyncResult<E>) -> AsyncResult<(A,B,C,D,E)> {
+        return AsyncResult.zip(a, b, c, d).flatMap { pair -> AsyncResult<(A,B,C,D,E)> in
+            return e.map { eValue in
+                return (pair.0, pair.1, pair.2, pair.3, eValue)
+            }
+        }
+    }
+    
 }
 
-extension AsyncResult: Equatable {
+extension AsyncResult: Equatable where T: Equatable{
     public static func == (lhs: AsyncResult<T>, rhs: AsyncResult<T>) -> Bool {
         let areLoading = lhs.isLoading || rhs.isLoading
         let areError = lhs.error != nil ||  rhs.error != nil
@@ -93,6 +131,5 @@ extension AsyncResult: Equatable {
         let sameResult = lhs.result == rhs.result
         
         return !areLoading && !areError && sameResult
-    
     }
 }

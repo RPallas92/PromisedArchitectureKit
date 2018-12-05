@@ -20,37 +20,21 @@ protocol View {
 // MARK: - Events
 enum Event {
     case loadProduct
-    case addToCart
 }
 
 // MARK: - State
 enum State: Equatable {
     case loading
     case showingProduct(AsyncResult<Product>)
-    case showingAddedToCart(AsyncResult<Product>, AsyncResult<AddToCartResult>)
     
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> State { // TODO AsyncResultState
         switch event {
-            
         case .loadProduct:
             let productResult = getProduct()
+            
             return .showingProduct(productResult)
-            
-        case .addToCart:
-            
-            var productResult: AsyncResult<Product>? {
-                switch state {
-                case let .showingProduct(product): return product
-                case let .showingAddedToCart(product, _): return product
-                default: return nil
-                }
-            }
-            
-            guard let product = productResult else { preconditionFailure() }
-            
-            let addToCartResult = addToCart(product)
-            return .showingAddedToCart(product, addToCartResult)
         }
+            
     }
     
 }
@@ -61,30 +45,10 @@ private func getProduct() -> AsyncResult<Product> {
             seal.fulfill("Yeezy 500")
         }
     }
+
     return AsyncResult<Product>(promise)
 }
 
-// It returns error randomly
-private func addToCart(_ productResult: AsyncResult<Product>) -> AsyncResult<AddToCartResult> {
-    
-    return productResult.flatMap { (product: Product) -> AsyncResult<AddToCartResult> in
-        
-        let promise = Promise<Product> { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                let number = Int(arc4random_uniform(10))
-                
-                if number < 5 {
-                    seal.fulfill("\(product) added to cart")
-                    
-                } else {
-                    let error = NSError(domain: "Error", code: 2333, userInfo: nil)
-                    seal.reject(error)
-                }
-            }
-        }
-        return AsyncResult<Product>(promise)
-    }
-}
 
 
 // MARK: - Presenter

@@ -42,5 +42,5 @@ The idea is to constrain the changes to view state in order to enforce correctne
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.frameworks = 'UIKit', 'MapKit'
   s.dependency 'PromiseKit', '~> 6.0'
-  s.swift_version = '3.2'
+  s.swift_version = '4.2'
 end

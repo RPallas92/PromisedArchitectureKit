@@ -26,7 +26,7 @@ class ViewController: UIViewController, View {
         addLoadingIndicator()
         initActions()
         
-        presenter = Presenter(view: self, actions: [loadProductAction, addToCartAction])
+        presenter = Presenter(view: self, actions: [loadProductAction])
         presenter.controllerLoaded()
     }
     
@@ -37,15 +37,15 @@ class ViewController: UIViewController, View {
     
     private func initActions() {
         loadProductAction = CustomAction<State, Event>(trigger: Event.loadProduct)
-        addToCartAction = CustomAction<State, Event>(trigger: Event.addToCart)
+        // addToCartAction = CustomAction<State, Event>(trigger: Event.addToCart)
     }
     
     private func addLoadingIndicator() {
-        indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        indicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.gray)
         indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         indicator.center = view.center
         self.view.addSubview(indicator)
-        self.view.bringSubview(toFront: indicator)
+        self.view.bringSubviewToFront(indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
@@ -55,7 +55,7 @@ class ViewController: UIViewController, View {
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        addToCartAction.execute()
+        // addToCartAction.execute()
     }
 
     // MARK: - User Outputs
@@ -69,9 +69,6 @@ class ViewController: UIViewController, View {
         switch state {
         case .loading:
             showLoading()
-            
-        case .showingAddedToCart(_, let addToCartResult):
-            handleProductResult(addToCartResult, addingToCart: true)
             
             
         case .showingProduct(let productResult):
