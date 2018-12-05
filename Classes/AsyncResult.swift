@@ -15,6 +15,8 @@ public class AsyncResult<T> {
     fileprivate var result: T?
     fileprivate var error: Error?
     fileprivate var isLoading = false
+    
+    public var loadingResult: T?
 
     public init(_ promise: Promise<T>) {
         self.promise = promise
@@ -62,7 +64,9 @@ public class AsyncResult<T> {
             }
         }
         
-        return AsyncResult<T>(resultPromise)
+        let asyncResult = AsyncResult<T>(resultPromise)
+        asyncResult.loadingResult = self.loadingResult
+        return asyncResult
     }
     
     public func mapErrorRecover( _ transformation: @escaping (Error) -> (T)) -> AsyncResult<T> {
@@ -74,8 +78,10 @@ public class AsyncResult<T> {
                 seal.fulfill(transformation(error))
             }
         }
-        
-        return AsyncResult<T>(resultPromise)
+
+        let asyncResult = AsyncResult<T>(resultPromise)
+        asyncResult.loadingResult = self.loadingResult
+        return asyncResult
     }
 
     public func flatMap<U>(_ transformation: @escaping(T) -> (AsyncResult<U>)) -> AsyncResult<U>{
@@ -94,6 +100,11 @@ public class AsyncResult<T> {
         }
         
         return AsyncResult<U>(resultPromise)
+    }
+    
+    public func stateWhenLoading(_ state: T) -> AsyncResult<T> {
+        self.loadingResult = state
+        return self
     }
     
     static func parallel(_ asyncResults: [AsyncResult<T>]) -> AsyncResult<[T]> {

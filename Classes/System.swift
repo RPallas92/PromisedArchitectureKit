@@ -12,12 +12,12 @@ public final class System<State, Event> {
 
     internal var eventQueue = [Event]()
     internal var callback: (() -> ())? = nil
-    
+
     internal var initialState: State
     internal var reducer: (State, Event) -> AsyncResult<State>
     internal var uiBindings: [((State) -> ())?]
     internal var currentState: State
-    
+
     private init(
         initialState: State,
         reducer: @escaping (State, Event) -> AsyncResult<State>,
@@ -28,7 +28,7 @@ public final class System<State, Event> {
         self.uiBindings = uiBindings
         self.currentState = initialState
     }
-    
+
     public static func pure(
         initialState: State,
         reducer: @escaping (State, Event) -> AsyncResult<State>,
@@ -36,17 +36,16 @@ public final class System<State, Event> {
         ) -> System {
         
         let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings)
-        
-        let _ = system.bindUI(initialState).done { _ in }
+        system.bindUI(initialState)
         return system
     }
-    
+
     public func addLoopCallback(callback: @escaping ()->()){
         self.callback = callback
     }
-    
+
     var actionExecuting = false
-    
+
     public func sendEvent(_ action: Event) {
         assert(Thread.isMainThread)
         if actionExecuting {
@@ -63,31 +62,31 @@ public final class System<State, Event> {
                     self.eventQueue.removeFirst()
                     self.sendEvent(nextEvent)
                 }
-                
             }
         }
     }
-    
+
     private func doLoop(_ event: Event) -> Promise<State> {
         return Promise.value(event)
-            .then { event in
-                self.reducer(self.currentState, event).promise
+            .then { event -> Promise<State> in
+                let asyncResultState = self.reducer(self.currentState, event)
+
+                if let stateWhenLoading = asyncResultState.loadingResult {
+                    self.bindUI(stateWhenLoading)
+                }
+
+                return asyncResultState.promise
             }
             .map { state in
                 self.currentState = state
+                self.bindUI(state)
                 return state
             }
-            .then { state -> Promise<State> in
-                self.bindUI(state)
-        }
     }
-    
-    private func bindUI(_ state: State) -> Promise<State> {
-        return Promise<State> { seal in
-            self.uiBindings.forEach { uiBinding in
-                uiBinding?(state)
-            }
-            seal.fulfill(state)
+
+    private func bindUI(_ state: State) {
+        self.uiBindings.forEach { uiBinding in
+            uiBinding?(state)
         }
     }
 }

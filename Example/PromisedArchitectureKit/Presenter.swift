@@ -34,6 +34,7 @@ enum State {
             
             return productResult
                 .map { State.showingProduct($0) }
+                .stateWhenLoading(State.loading)
                 .mapErrorRecover { State.showingError($0) }
         }
     }
