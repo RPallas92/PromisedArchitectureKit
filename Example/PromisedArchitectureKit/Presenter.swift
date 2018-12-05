@@ -33,7 +33,7 @@ enum State {
     
     static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
-            
+
         case .loadProduct:
             let productResult = getProduct(cached: false)
             
@@ -54,12 +54,9 @@ enum State {
                     .mapErrorRecover{ State.showingError($0) }
             }
             .stateWhenLoading(State.loading)
-
-            
         }
     }
 }
-
 
 fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
     let delay: DispatchTime = cached ? .now() : .now() + 3
@@ -68,17 +65,16 @@ fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
             seal.fulfill("Yeezy 500")
         }
     }
-    
+
     return AsyncResult<Product>(promise)
 }
 
-
 fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
     let randomNumber = Int.random(in: 1..<10)
-    
+
     let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
     let promise = Promise<CartResponse>.value("Product: \(product) addded to cart for user: \(user)")
-    
+
     if randomNumber < 5 {
         return AsyncResult<CartResponse>(failedPromise)
     } else {
@@ -92,7 +88,7 @@ fileprivate func getUser() -> AsyncResult<User> {
             seal.fulfill("Richi")
         }
     }
-    
+
     return AsyncResult<User>(promise)
 }
 
@@ -117,5 +113,4 @@ class Presenter {
             uiBindings: [view?.updateUI]
         )
     }
-    
 }
