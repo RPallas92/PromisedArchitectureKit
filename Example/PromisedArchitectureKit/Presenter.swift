@@ -11,130 +11,106 @@ import PromisedArchitectureKit
 import PromiseKit
 
 typealias Product = String
+typealias CartResponse = String
+typealias User = String
 
-protocol View {
+protocol View: class {
     func updateUI(state: State)
 }
 
 // MARK: - Events
 enum Event {
-    case willLoadProduct
-    case didLoadProduct(Product)
-    case didThrowError(String)
-    case willAddToCart
-    case didAddToCart(Product)
+    case loadProduct
+    case addToCart
 }
 
 // MARK: - State
-enum State: Equatable {
-    case start
+enum State {
     case loading
-    case showProduct(Product)
-    case showError(String)
-    case addingToCart(Product)
-    case showProductDidAddToCart(Product)
+    case showingProduct(Product)
+    case showingAddedToCart(Product, CartResponse)
+    case showingError(Error)
     
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
             
-        case .willLoadProduct:
-            return .loading
+            return productResult
+                .map { State.showingProduct($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.showingError($0) }
             
-        case .didLoadProduct(let product):
-            return .showProduct(product)
+        case .addToCart:
+            let productResult = getProduct(cached: true)
+            let userResult = getUser()
             
-        case .didThrowError(let errorDescription):
-            return .showError(errorDescription)
-            
-        case .willAddToCart:
-            var product: Product? {
-                switch state {
-                case let .showProduct(product): return product
-                case let .showProductDidAddToCart(product): return product
-                default: return nil
-                }
+            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+                let (product, user) = pair
+                
+                return addToCart(product: product, user: user)
+                    .map { State.showingAddedToCart(product, $0) }
+                    .mapErrorRecover{ State.showingError($0) }
             }
-            
-            if let product = product {
-                return .addingToCart(product)
-            } else {
-                return .showError("No product")
-            }
-            
-        case .didAddToCart(let product):
-            return .showProductDidAddToCart(product)
+            .stateWhenLoading(State.loading)
         }
     }
+}
+
+fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
+    let delay: DispatchTime = cached ? .now() : .now() + 3
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: delay) {
+            seal.fulfill("Yeezy 500")
+        }
+    }
+
+    return AsyncResult<Product>(promise)
+}
+
+fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
+    let randomNumber = Int.random(in: 1..<10)
+
+    let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
+    let promise = Promise<CartResponse>.value("Product: \(product) addded to cart for user: \(user)")
+
+    if randomNumber < 5 {
+        return AsyncResult<CartResponse>(failedPromise)
+    } else {
+        return AsyncResult<CartResponse>(promise)
+    }
+}
+
+fileprivate func getUser() -> AsyncResult<User> {
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            seal.fulfill("Richi")
+        }
+    }
+
+    return AsyncResult<User>(promise)
 }
 
 // MARK: - Presenter
 class Presenter {
     
     var system: System<State, Event>?
-    let view: View
-    let actions: [Action<State, Event>]
+    weak var view: View?
     
-    init(view: View, actions: [Action<State, Event>]) {
+    init(view: View) {
         self.view = view
-        self.actions = actions
+    }
+    
+    func sendEvent(_ event: Event) {
+        system?.sendEvent(event)
     }
     
     func controllerLoaded() {
-
-        self.system = System.pure(
-            initialState: State.start,
+        system = System.pure(
+            initialState: State.loading,
             reducer: State.reduce,
-            uiBindings: [view.updateUI],
-            actions: actions,
-            reactions: reactions()
+            uiBindings: [view?.updateUI]
         )
-    }
-    
-    func reactions() -> [Reaction<State,Event>]{
-        let loadingReaction = Reaction<State,Event>.react({ _ in
-            self.getProduct().map { Event.didLoadProduct($0) }
-        }, when: {
-            $0 == State.loading
-        })
-        
-        let addingToCartReaction = Reaction<State,Event>.react({ state in
-            guard case let .addingToCart(product) = state else { preconditionFailure() }
-            return self.addToCart(product: product)
-                .map { Event.didAddToCart($0)}
-                .recover({ error -> Promise<Event> in
-                    return Promise.value(Event.didThrowError("Error adding to cart"))
-                })
-            
-            
-        }, when: { state in
-            guard case let .addingToCart(product) = state else { return false }
-            return state == State.addingToCart(product)
-        })
-        return [loadingReaction, addingToCartReaction]
-    }
-    
-    func getProduct() -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                seal.fulfill("Yeezy 500")
-            }
-        }
-    }
-    
-    // It returns error randomly
-    func addToCart(product: Product) -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                let number = Int(arc4random_uniform(10))
-                
-                if number < 5 {
-                    seal.fulfill("\(product) added to cart")
-                    
-                } else {
-                    let error = NSError(domain: "Error", code: 2333, userInfo: nil)
-                    seal.reject(error)
-                }
-            }
-        }
     }
 }

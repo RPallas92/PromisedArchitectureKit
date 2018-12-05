@@ -18,76 +18,67 @@ class ViewController: UIViewController, View {
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
-    var loadProductAction: CustomAction<State, Event>! = nil
-    var addToCartAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        initActions()
         
-        presenter = Presenter(view: self, actions: [loadProductAction, addToCartAction])
+        presenter = Presenter(view: self)
         presenter.controllerLoaded()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadProductAction.execute()
-    }
-    
-    private func initActions() {
-        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
-        addToCartAction = CustomAction<State, Event>(trigger: Event.willAddToCart)
+        presenter.sendEvent(Event.loadProduct)
     }
     
     private func addLoadingIndicator() {
-        indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        indicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.gray)
         indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         indicator.center = view.center
-        self.view.addSubview(indicator)
-        self.view.bringSubview(toFront: indicator)
+        view.addSubview(indicator)
+        view.bringSubviewToFront(indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     // MARK: - User Actions
     @IBAction func didTapRefresh(_ sender: Any) {
-        loadProductAction.execute()
+        presenter.sendEvent(Event.loadProduct)
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        addToCartAction.execute()
+        presenter.sendEvent(Event.addToCart)
     }
 
     // MARK: - User Outputs
     func updateUI(state: State) {
-        hideLoading()
+        showLoading()
         disableBuyButton()
         cartLabel.text = "No products"
-
+        errorLabel.text = ""
+        
+        
         switch state {
-        case .start:
-            print("Starting")
-            disableBuyButton()
-            
         case .loading:
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
-            
-        case .addingToCart(_):
-            showLoading()
-            
-        case .showProductDidAddToCart(let product):
+        case .showingProduct(let product):
             cartLabel.text = product
+            hideLoading()
+            
+        case .showingError(let error):
+            errorLabel.text = error.localizedDescription
+            hideLoading()
+            
+        case .showingAddedToCart(_, let cartResponse):
+            cartLabel.text = cartResponse
+            hideLoading()
             enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
         }
-        
+
         print(state)
     }
+    
     
     private func enableBuyButton() {
         buyButton.alpha = 1.0
