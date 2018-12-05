@@ -11,93 +11,63 @@ import PromisedArchitectureKit
 import PromiseKit
 import UIKit
 
-fileprivate typealias Function = () -> ()
-fileprivate typealias Completable = (@escaping Function) -> ()
+typealias Product = String
 
-fileprivate func runInBackground(_ asyncCode: @escaping(@escaping Completable)->()) {
-    DispatchQueue.global(qos: .background).async {
-        asyncCode { inMainThread in
-            DispatchQueue.main.async {
-                inMainThread()
-            }
-        }
-    }
-}
+let mockProduct = "Yeezy 500"
 
+// MARK: - Events
 enum Event {
-    case loadCategories
-    case categoriesLoaded([String])
+    case loadProduct
 }
 
-struct State {
-    var categories: [String]
-    var shouldLoadData = false
-    
-    static var empty = State(categories: [], shouldLoadData: false)
+// MARK: - State
+enum State {
+    case loading
+    case showingProduct(Product)
+    case showingError(Error)
     
     static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
-        case .loadCategories:
-            var newState = state
-            newState.shouldLoadData = true
-            newState.categories = []
-            return AsyncResult(Promise.value(newState))
-        case .categoriesLoaded(let categories):
-            var newState = state
-            newState.shouldLoadData = false
-            newState.categories = categories
-            return AsyncResult(Promise.value(newState))
+        case .loadProduct:
+            let productResult = getProduct()
+            
+            return productResult
+                .map { State.showingProduct($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.showingError($0) }
         }
     }
 }
+
+func getProduct() -> AsyncResult<Product> {
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: .now()) {
+            seal.fulfill(mockProduct)
+        }
+    }
+    
+    return AsyncResult<Product>(promise)
+}
+
 
 class ArchitectureKitTests: XCTestCase {
     
     func testArchitecture(){
-        
         let expect = expectation(description: "testArchitecture")
         
-        typealias TestSystem = System<State,Event>
-        
-        func categoriesBinding(state: State) {
-            print(state.categories)
-        }
-        
-        func dummyBinding(state: State) {
-            print("Dummy binding")
-        }
-        
-        func loadCategories() -> Promise<Event> {
-            let categories = ["dev"]
-            return Promise { seal in
-                runInBackground { runInUI in
-                    let event = Event.categoriesLoaded(categories)
-                    runInUI {
-                        seal.fulfill(event)
-                    }
-                }
-            }
-        }
-        
-        let initialState = State.empty
-        let uiBindings = [categoriesBinding, dummyBinding]
-        
-        let button = UIButton()
-        
-        
-        let system = TestSystem.pure(
-            initialState: initialState,
-            reducer: State.reduce,
-            uiBindings: uiBindings
-        )
-        
-        system.addLoopCallback {
+        func mockBinding(state : State) -> () {
+            guard case let .showingProduct(product) = state else { return }
+            XCTAssertEqual(product, mockProduct)
             expect.fulfill()
         }
-        
-        //Simulate user interaction - Tap button
-        //action.execute()
-        
+
+        let system = System<State, Event>.pure(
+            initialState: State.loading,
+            reducer: State.reduce,
+            uiBindings: [mockBinding]
+        )
+    
+        system.sendEvent(.loadProduct)
         wait(for: [expect], timeout: 10.0)
     }
     
