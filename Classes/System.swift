@@ -11,7 +11,7 @@ import PromiseKit
 public final class System<State, Event> {
 
     internal var eventQueue = [Event]()
-    internal var callback: (() -> ())? = nil
+    internal var callback: ((State) -> ())? = nil
 
     internal var initialState: State
     internal var reducer: (State, Event) -> AsyncResult<State>
@@ -40,7 +40,7 @@ public final class System<State, Event> {
         return system
     }
 
-    public func addLoopCallback(callback: @escaping ()->()){
+    public func addLoopCallback(callback: @escaping (State)->()){
         self.callback = callback
     }
 
@@ -52,10 +52,10 @@ public final class System<State, Event> {
             self.eventQueue.append(action)
         } else {
             actionExecuting = true
-            let _ = doLoop(action).done { _ in
+            let _ = doLoop(action).done { state in
                 assert(Thread.isMainThread, "PromisedArchitectureKit: Final callback must be run on main thread")
                 if let callback = self.callback {
-                    callback()
+                    callback(state)
                 }
                 self.actionExecuting = false
                 if let nextEvent = self.eventQueue.first {
@@ -69,6 +69,7 @@ public final class System<State, Event> {
     private func doLoop(_ event: Event) -> Promise<State> {
         return Promise.value(event)
             .then { event -> Promise<State> in
+
                 let asyncResultState = self.reducer(self.currentState, event)
 
                 if let stateWhenLoading = asyncResultState.loadingResult {
