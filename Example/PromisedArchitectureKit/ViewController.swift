@@ -62,15 +62,15 @@ class ViewController: UIViewController, View {
         case .loading:
             showLoading()
             
-        case .showingProduct(let product):
+        case .productLoaded(let product):
             cartLabel.text = product
             hideLoading()
             
-        case .showingError(let error):
+        case .error(let error):
             errorLabel.text = error.localizedDescription
             hideLoading()
             
-        case .showingAddedToCart(_, let cartResponse):
+        case .addedToCart(_, let cartResponse):
             cartLabel.text = cartResponse
             hideLoading()
             enableBuyButton()

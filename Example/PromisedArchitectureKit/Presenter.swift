@@ -27,9 +27,9 @@ enum Event {
 // MARK: - State
 enum State {
     case loading
-    case showingProduct(Product)
-    case showingAddedToCart(Product, CartResponse)
-    case showingError(Error)
+    case productLoaded(Product)
+    case addedToCart(Product, CartResponse)
+    case error(Error)
     
     static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
@@ -38,9 +38,9 @@ enum State {
             let productResult = getProduct(cached: false)
             
             return productResult
-                .map { State.showingProduct($0) }
+                .map { State.productLoaded($0) }
                 .stateWhenLoading(State.loading)
-                .mapErrorRecover { State.showingError($0) }
+                .mapErrorRecover { State.error($0) }
             
         case .addToCart:
             let productResult = getProduct(cached: true)
@@ -50,8 +50,8 @@ enum State {
                 let (product, user) = pair
                 
                 return addToCart(product: product, user: user)
-                    .map { State.showingAddedToCart(product, $0) }
-                    .mapErrorRecover{ State.showingError($0) }
+                    .map { State.addedToCart(product, $0) }
+                    .mapErrorRecover{ State.error($0) }
             }
             .stateWhenLoading(State.loading)
         }

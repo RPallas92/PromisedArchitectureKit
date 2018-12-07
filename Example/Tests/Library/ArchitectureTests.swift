@@ -11,30 +11,28 @@ import PromisedArchitectureKit
 import PromiseKit
 import UIKit
 
-typealias Product = String
-
 let mockProduct = "Yeezy 500"
 
 // MARK: - Events
-enum Event {
+enum TestEvent {
     case loadProduct
 }
 
 // MARK: - State
-enum State {
+enum TestState {
     case loading
     case showingProduct(Product)
     case showingError(Error)
     
-    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+    static func reduce(state: TestState, event: TestEvent) -> AsyncResult<TestState> {
         switch event {
         case .loadProduct:
             let productResult = getProduct()
             
             return productResult
-                .map { State.showingProduct($0) }
-                .stateWhenLoading(State.loading)
-                .mapErrorRecover { State.showingError($0) }
+                .map { TestState.showingProduct($0) }
+                .stateWhenLoading(TestState.loading)
+                .mapErrorRecover { TestState.showingError($0) }
         }
     }
 }
@@ -49,21 +47,21 @@ func getProduct() -> AsyncResult<Product> {
     return AsyncResult<Product>(promise)
 }
 
-
 class ArchitectureKitTests: XCTestCase {
     
-    func testArchitecture(){
-        let expect = expectation(description: "testArchitecture")
+    func testLoadProduct(){
+        let expect = expectation(description: "testLoadProduct")
         
-        func mockBinding(state : State) -> () {
-            guard case let .showingProduct(product) = state else { return }
-            XCTAssertEqual(product, mockProduct)
-            expect.fulfill()
+        func mockBinding(state : TestState) -> () {
+            if case let .showingProduct(product) = state {
+                XCTAssertEqual(product, mockProduct)
+                expect.fulfill()
+            }
         }
-
-        let system = System<State, Event>.pure(
-            initialState: State.loading,
-            reducer: State.reduce,
+        
+        let system = System<TestState, TestEvent>.pure(
+            initialState: TestState.loading,
+            reducer: TestState.reduce,
             uiBindings: [mockBinding]
         )
     

@@ -22,6 +22,14 @@ public class AsyncResult<T> {
         self.promise = promise
     }
     
+    public static func of(_ value: T) -> AsyncResult<T> {
+        return AsyncResult(Promise.value(value))
+    }
+    
+    public static func error(_ error: Error) -> AsyncResult<T> {
+        return AsyncResult<T>(Promise<T>(error: error))
+    }
+    
     public func fold(
         loading: @escaping () -> (),
         failure: @escaping (Error) -> (),
