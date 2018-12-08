@@ -149,27 +149,81 @@ A Promise is used for handling asynchronous operations. PromisedArchitectureKit 
 
 That function returns a Promise that will return a product. It waits for 5 seconds and then returns the product. It simulates a network call.
 
-### Add reactions to states
+### Don't fear the AsyncResult
+AsyncResult is just a wrapper over Promise that provides it more power. It is just like a Promise on steroids.
 
-If we want to load the product from the baceknd, we would require a network call, which is a side effect and it is asynchronous. Som to achieve it, we will use reactions to state. The way of dealing with effects in PromisedArchitectureKit is encode them into part of state and then design the reactions.
+But don't worry. If you whole app uses Promises, it is ok. You can keep using promises and transform them to AsyncResults on the reducer function with ease.
 
+How to get an AsyncResult from a Promise?:
 
-**A reaction is just a computation that is triggered in some cases, depending on the current state of the system, that launches a new event, and produces a new state.**
-
-
-A whole PromisedArchitectureKit loop begins from a UserAction that triggers an event. Then the reducer function computes a new state from the event and previous state. PromisedArchitectureKit checks if any rection must be triggered from the new state. If so, the reaction produces a new event asynchronously (by executing side effects) and a new state if computed from the reaction’s event.
-
-We can add a loading reaction in our code:
-
-```swift
-let loadingReaction = Reaction<State,Event>.react({ _ in
-	self.getProduct().map { Event.didLoadProduct($0) }
-}, when: {
-	$0 == State.loading
-})
+```
+let asyncResult = AsyncResult(promise)
 ```
 
-It loads the product from the backend and then it triggers a `didLoadProduct` event with the loaded product. This reaction is only triggered **when** the current state of the app is `loading`. 
+And that's it!
+
+### What if i want to make network calls, DB calls, and so on?
+
+If we want to load the product from the backend, we would require a network call, which is a side effect and it is asynchronous.
+
+In order to achieve it, we will use Promises to handle async code. As the reducer funciton returns the new state async, we can map Promises to new states.
+
+For example, we are in Start state, and we want to load a product and go to loadedProduct state, when a loadProduct event is triggered. In the reducer we do:
+
+```swift 
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+        switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
+            
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
+                
+        (...)
+
+```
+
+What is this doing? Step by step:
+
+* When a loadProduct event is triggered
+
+```swift
+	switch event {
+   		case .loadProduct:
+```
+* We get the product (AsyncResult<Product>)
+
+```swift
+	let productResult = getProduct(cached: false)
+``` 
+
+* In case of the product would be retrieved successfully we will return a loadedProduct state:
+
+```swift
+return productResult
+ 	.map { State.productLoaded($0) }
+
+```
+
+* We want to send the UI a loading state while the Promise being executed until it gets resolved, so the UI can show a loading indicator:
+
+```swift
+.stateWhenLoading(State.loading)
+```
+
+* In case of the product **wouldn't** be retrieved successfully we will return a error state:
+
+```swift
+	.mapErrorRecover { State.error($0) }
+
+```
+
+Pretty easy and neat.
+
+**There is no side effect here: there is only a description of it. Actually, the side effect will be executed by the library.**
 
 ### Update the view
 
@@ -179,37 +233,53 @@ Example:
 
 ```swift
     func updateUI(state: State) {
-        hideLoading()
-        disableBuyButton()
-        cartLabel.text = "No products"
+        showLoading()
+        addToCartButton.isEnabled = false
+        refreshButton.isHidden = false
 
+    
         switch state {
         case .start:
-            print("Starting")
-            disableBuyButton()
-            
+            productTitleLabel.text = ""
+            descriptionLabel.text = ""
+            imageView.image = nil
         case .loading:
+            refreshButton.isHidden = true
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
+        case .productLoaded(let product):
+            productTitleLabel.text = product.title
+            descriptionLabel.text = product.description
+            updateImage(with: product.imageUrl)
+            addToCartButton.isEnabled = true
+            hideLoading()
             
-        case .addingToCart(_):
-            showLoading()
+        case .error(let error):
+            descriptionLabel.text = error.localizedDescription
+            hideLoading()
             
-        case .showProductDidAddToCart(let product):
-            cartLabel.text = product
-            enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
+        case .addedToCart(_, let cartResponse):
+            hideLoading()
+            addToCartButton.isEnabled = true
+            showAddedToCartAlert(cartResponse)
         }
-        
+
         print(state)
     }
 ```
 
 So, the presenter will compute the next state, and will send it to the view. The view will draw itself accordingly.  
+
+
+## What the library does under the hood?
+
+TODO: Explain a whole loop, step by step
+
+## Why should I use PromisedArchiterueKit V2 ?
+TODO: explain why
+
+explaing main advantages (what it does - telegram chat)  
+explain analytics
 
 
 ## Example
@@ -468,8 +538,5 @@ Ricardo Pallás
 
 PromisedArchitectureKit is available under the MIT license. See the LICENSE file for more info.
 
-
-## TODO
-explaing main advantages (what it does - telegram chat)
-explain analytics
-
+### TO DO
+Explain changes between V1 and V2
