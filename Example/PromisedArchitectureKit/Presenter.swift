@@ -84,7 +84,7 @@ fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResp
     let randomNumber = Int.random(in: 1..<10)
 
     let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
-    let promise = Promise<CartResponse>.value("Product: \(product.title) addded to cart for user: \(user)")
+    let promise = Promise<CartResponse>.value("Product: \(product.title) added to cart for user: \(user)")
 
     if randomNumber < 5 {
         return AsyncResult<CartResponse>(failedPromise)
