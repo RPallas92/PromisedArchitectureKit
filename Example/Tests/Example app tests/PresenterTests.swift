@@ -10,6 +10,11 @@ import XCTest
 
 class PresenterTest: XCTestCase {
     
+    let expectedProduct = Product(
+        title: "Yeezy Triple White",
+        description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
+        imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
+    
     class ViewMock: View {
         var updateUIFunction: ((State) -> ())?
         
@@ -24,12 +29,11 @@ class PresenterTest: XCTestCase {
     
     func testLoadProduct() {
         let expect = expectation(description: "testLoadProduct")
-        let expectedProduct = "Yeezy 500"
         
         let mockedView = ViewMock()
         mockedView.mockUpdateUI { state in
             if case let .productLoaded(product) = state {
-                XCTAssertEqual(product, expectedProduct)
+                XCTAssertEqual(product, self.expectedProduct)
                 expect.fulfill()
             }
         }
@@ -42,14 +46,14 @@ class PresenterTest: XCTestCase {
     
     func testAddToCart() {
         let expect = expectation(description: "testAddToCart")
-        let expectedProduct = "Yeezy 500"
+
         let expectedResponse = "Product: Yeezy 500 addded to cart for user: Richi"
         let expectedError = NSError(domain: "Error adding to cart",code: 15, userInfo: nil)
-
+        
         let mockedView = ViewMock()
         mockedView.mockUpdateUI { state in
             if case let .addedToCart(product, cartResponse) = state {
-                XCTAssertEqual(product, expectedProduct)
+                XCTAssertEqual(product, self.expectedProduct)
                 XCTAssertEqual(cartResponse, expectedResponse)
                 expect.fulfill()
             } else if case let .error(error) = state {
@@ -65,6 +69,6 @@ class PresenterTest: XCTestCase {
         
         wait(for: [expect], timeout: 10.0)
     }
-
+    
     
 }

@@ -10,9 +10,14 @@ import Foundation
 import PromisedArchitectureKit
 import PromiseKit
 
-typealias Product = String
 typealias CartResponse = String
 typealias User = String
+
+struct Product: Equatable {
+    let title: String
+    let description: String
+    let imageUrl: String
+}
 
 protocol View: class {
     func updateUI(state: State)
@@ -26,6 +31,7 @@ enum Event {
 
 // MARK: - State
 enum State {
+    case start
     case loading
     case productLoaded(Product)
     case addedToCart(Product, CartResponse)
@@ -60,9 +66,14 @@ enum State {
 
 fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
     let delay: DispatchTime = cached ? .now() : .now() + 3
+    let product = Product(
+        title: "Yeezy Triple White",
+        description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
+        imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
+    
     let promise = Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: delay) {
-            seal.fulfill("Yeezy 500")
+            seal.fulfill(product)
         }
     }
 
@@ -73,7 +84,7 @@ fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResp
     let randomNumber = Int.random(in: 1..<10)
 
     let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
-    let promise = Promise<CartResponse>.value("Product: \(product) addded to cart for user: \(user)")
+    let promise = Promise<CartResponse>.value("Product: \(product.title) addded to cart for user: \(user)")
 
     if randomNumber < 5 {
         return AsyncResult<CartResponse>(failedPromise)
@@ -108,7 +119,7 @@ class Presenter {
     
     func controllerLoaded() {
         system = System.pure(
-            initialState: State.loading,
+            initialState: State.start,
             reducer: State.reduce,
             uiBindings: [view?.updateUI]
         )

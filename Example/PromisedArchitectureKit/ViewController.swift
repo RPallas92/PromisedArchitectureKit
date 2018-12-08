@@ -12,9 +12,10 @@ import PromisedArchitectureKit
 class ViewController: UIViewController, View {
     
     @IBOutlet weak var productTitleLabel: UILabel!
-    @IBOutlet weak var cartLabel: UILabel!
-    @IBOutlet weak var errorLabel: UILabel!
-    @IBOutlet weak var buyButton: UIButton!
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var descriptionLabel: UILabel!
+    @IBOutlet weak var addToCartButton: UIButton!
+    @IBOutlet weak var refreshButton: UIButton!
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
@@ -53,41 +54,37 @@ class ViewController: UIViewController, View {
     // MARK: - User Outputs
     func updateUI(state: State) {
         showLoading()
-        disableBuyButton()
-        cartLabel.text = "No products"
-        errorLabel.text = ""
-        
-        
+        addToCartButton.isEnabled = false
+        refreshButton.isHidden = false
+
+    
         switch state {
+        case .start:
+            productTitleLabel.text = ""
+            descriptionLabel.text = ""
+            imageView.image = nil
         case .loading:
+            refreshButton.isHidden = true
             showLoading()
             
         case .productLoaded(let product):
-            cartLabel.text = product
+            productTitleLabel.text = product.title
+            descriptionLabel.text = product.description
+            updateImage(with: product.imageUrl)
+            addToCartButton.isEnabled = true
             hideLoading()
             
         case .error(let error):
-            errorLabel.text = error.localizedDescription
+            descriptionLabel.text = error.localizedDescription
             hideLoading()
             
         case .addedToCart(_, let cartResponse):
-            cartLabel.text = cartResponse
             hideLoading()
-            enableBuyButton()
+            addToCartButton.isEnabled = true
+            showAddedToCartAlert(cartResponse)
         }
 
         print(state)
-    }
-    
-    
-    private func enableBuyButton() {
-        buyButton.alpha = 1.0
-        buyButton.isEnabled = true
-    }
-    
-    private func disableBuyButton() {
-        buyButton.alpha = 0.30
-        buyButton.isEnabled = false
     }
     
     private func showLoading() {
@@ -96,6 +93,20 @@ class ViewController: UIViewController, View {
     
     private func hideLoading() {
         indicator.stopAnimating()
+    }
+    
+    private func showAddedToCartAlert(_ message: String) {
+        let alertController = UIAlertController(title: "Added to cart", message:
+            message, preferredStyle: UIAlertController.Style.alert)
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default,handler: nil))
+        self.present(alertController, animated: true, completion: nil)
+    }
+    
+    private func updateImage(with urlPath: String) {
+        if let url = URL(string: urlPath), let data = try? Data(contentsOf: url) {
+            let image = UIImage(data: data)
+            imageView.image = image
+        }
     }
 
 }

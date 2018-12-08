@@ -11,7 +11,10 @@ import PromisedArchitectureKit
 import PromiseKit
 import UIKit
 
-let mockProduct = "Yeezy 500"
+let mockProduct = Product(
+    title: "Yeezy Triple White",
+    description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
+    imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
 
 // MARK: - Events
 enum TestEvent {
