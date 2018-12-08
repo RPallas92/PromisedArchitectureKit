@@ -1,4 +1,4 @@
-# PromisedArchitectureKit
+# PromisedArchitectureKit V2
 
 [![CI Status](https://img.shields.io/travis/rpallas92/PromisedArchitectureKit.svg?style=flat)](https://travis-ci.org/rpallas92/PromisedArchitectureKit)
 [![Version](https://img.shields.io/cocoapods/v/PromisedArchitectureKit.svg?style=flat)](https://cocoapods.org/pods/PromisedArchitectureKit)
@@ -6,12 +6,15 @@
 [![Platform](https://img.shields.io/cocoapods/p/PromisedArchitectureKit.svg?style=flat)](https://cocoapods.org/pods/PromisedArchitectureKit)
 
 
-The simplest architecture for [PromiseKit](https://github.com/mxcl/PromiseKit)
-  Inspired by [RxFeedback](https://github.com/NoTests/RxFeedback.swift), but it uses Promises (from PromiseKit) instead of RxSwift.
+The simplest architecture for [PromiseKit](https://github.com/mxcl/PromiseKit), now V2, even simpler and easier to reason about.
+
+### V2 Goal
+
+> PromisedArchitectureKit V2 has been designed to impose constraints that enforce correctness and simplicity.
   
 ## Introduction
 
-PromisedArchitectureKit is a library that tries to enforce correctness and simplify the state management of applications and systems. It helps you write applications that behave consistently, and are easy to test. It’s strongly inspired by Redux and RxFeedback.
+PromisedArchitectureKit is a library that tries to enforce correctness and simplify the state management of applications and systems. It helps you write applications that behave consistently, and are easy to test. It’s inspired by Redux and RxFeedback.
 
 ## Motivation
 
@@ -24,8 +27,8 @@ I started with **Model-View-Controller (MVC)**, then **Model-View-ViewModel (MVV
 Then it appeared **Elm** and **Redux** and other Redux-like architectures as Redux-Observable, RxFeedback, Cycle.js, ReSwift, etc. The main difference between these architectures (including PromisedArchitectureKit) and MVP is that they introduce constrains of how the UI state can be updated, in order to enforce correctness and make apps easier to reason about.  
 
 
-Which make PromisedArchitectureKit different from these Redux-like architectures is it uses feedback loops (called Reactions) to run effects and encodes them into part of state and uses Promises from PromiseKit to wrap the effects.  
-
+Which make PromisedArchitectureKit different from these Redux-like architectures is it uses
+async reducers (using PromiseKit) to wrap the effects, then it runs side effects for you and calls the UI with the result.
 
 **PromisedArchitectureKit runs side effects for you. Your code stays 100% pure.**
 
@@ -47,24 +50,21 @@ PromisedArchitectureKit itself is very simple. How it looks:
 ```swift
 self.system = System.pure(
 	initialState: State.start,
-	reducer: State.reduce,
-	uiBindings: [view.updateUI],
-	actions: actions,
-	reactions: reactions()
+   	reducer: State.reduce,
+   	uiBindings: [view?.updateUI]
 )
 ```
 
 ### The core concept
-Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum. For example, the state of a Ecommerce **Product detail page** app might look like this:
+Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum. For example, the state of a Ecommerce **Product detail page (PDP)** app might look like this:
 
 ```swift
-enum State: Equatable {
+enum State {
     case start
     case loading
-    case showProduct(Product)
-    case showError(String)
-    case addingToCart(Product)
-    case showProductDidAddToCart(Product)
+    case productLoaded(Product)
+    case addedToCart(Product, CartResponse)
+    case error(Error)
 }
 ```
 In this screen, the app loads the product, then it can show the product or an error. After the product is loaded, the user can add it to the basket.  
@@ -80,58 +80,51 @@ That “f” function will be the UI binding function that we will see later on.
 
 ```swift
 enum Event {
-    case willLoadProduct
-    case didLoadProduct(Product)
-    case didThrowError(String)
-    case willAddToCart
-    case didAddToCart(Product)
+    case loadProduct
+    case addToCart
 }
 ```
 
 Enforcing that every change is described as an event lets us have a clear understanding of what’s going on in the app. If something changed, we know why it changed.  
 
- Events are like breadcrumbs of what has happened. Finally, to tie state and actions together, we write a function called **reducer**. A reducer it’s just a function that **takes state and action as arguments, and returns the next state of the app**:
+ Events are like breadcrumbs of what has happened. Finally, to tie state and actions together, we write a function called **reducer**. A reducer it’s just a function that **takes state and action as arguments, and returns the next state of the app (asynchronously)**:
  
-`(State, Event) -> State`  
+`(State, Event) -> AsyncResult<State>`
 
-We write a reducer for every state of every screen. For the PDP screen:  
+AsyncResult is just a wrapper of Promise.  
+
+We write a reducer function for every state of every screen. For the PDP screen:  
  
  
  ```swift
-     static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
             
-        case .willLoadProduct:
-            return .loading
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
             
-        case .didLoadProduct(let product):
-            return .showProduct(product)
+        case .addToCart:
+            let productResult = getProduct(cached: true)
+            let userResult = getUser()
             
-        case .didThrowError(let errorDescription):
-            return .showError(errorDescription)
-            
-        case .willAddToCart:
-            var product: Product? {
-                switch state {
-                case let .showProduct(product): return product
-                case let .showProductDidAddToCart(product): return product
-                default: return nil
-                }
+            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+                let (product, user) = pair
+                
+                return addToCart(product: product, user: user)
+                    .map { State.addedToCart(product, $0) }
+                    .mapErrorRecover{ State.error($0) }
             }
-            
-            if let product = product {
-                return .addingToCart(product)
-            } else {
-                return .showError("No product")
-            }
-            
-        case .didAddToCart(let product):
-            return .showProductDidAddToCart(product)
+            .stateWhenLoading(State.loading)
         }
     }
  ```
 
-Notice that the reducer is a pure function, in terms of referencial transparency, and for state S and event E, it always return the same state, and has no side effects.
+Notice that the reducer is a pure function, in terms of referencial transparency, and for state S and event E, it always return the same state description, and has no side effects (it only returns descriptions of the effects, the library will run them for you).
 
 
 **This is basically the whole idea of PromisedArchitectureKit**. Note that we haven’t used any PromisedArchitectureKit APIs. It comes with a few utilities to facilitate this pattern, but the main idea is that you describe how your state is updated over time in response to events, and 90% of the code you write is just plain Swift, so the UI logic can be tested with ease.
@@ -474,3 +467,9 @@ Ricardo Pallás
 ## License
 
 PromisedArchitectureKit is available under the MIT license. See the LICENSE file for more info.
+
+
+## TODO
+explaing main advantages (what it does - telegram chat)
+explain analytics
+
