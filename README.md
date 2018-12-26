@@ -1,4 +1,4 @@
-# PromisedArchitectureKit
+# PromisedArchitectureKit V2
 
 [![CI Status](https://img.shields.io/travis/rpallas92/PromisedArchitectureKit.svg?style=flat)](https://travis-ci.org/rpallas92/PromisedArchitectureKit)
 [![Version](https://img.shields.io/cocoapods/v/PromisedArchitectureKit.svg?style=flat)](https://cocoapods.org/pods/PromisedArchitectureKit)
@@ -6,12 +6,15 @@
 [![Platform](https://img.shields.io/cocoapods/p/PromisedArchitectureKit.svg?style=flat)](https://cocoapods.org/pods/PromisedArchitectureKit)
 
 
-The simplest architecture for [PromiseKit](https://github.com/mxcl/PromiseKit)
-  Inspired by [RxFeedback](https://github.com/NoTests/RxFeedback.swift), but it uses Promises (from PromiseKit) instead of RxSwift.
+The simplest architecture for [PromiseKit](https://github.com/mxcl/PromiseKit), now V2, even simpler and easier to reason about.
+
+### V2 Goal
+
+> PromisedArchitectureKit V2 has been designed to impose constraints that enforce correctness and simplicity.
   
 ## Introduction
 
-PromisedArchitectureKit is a library that tries to enforce correctness and simplify the state management of applications and systems. It helps you write applications that behave consistently, and are easy to test. It’s strongly inspired by Redux and RxFeedback.
+PromisedArchitectureKit is a library that tries to enforce correctness and simplify the state management of applications and systems. It helps you write applications that behave consistently, and are easy to test. It’s inspired by Redux and RxFeedback.
 
 ## Motivation
 
@@ -24,8 +27,8 @@ I started with **Model-View-Controller (MVC)**, then **Model-View-ViewModel (MVV
 Then it appeared **Elm** and **Redux** and other Redux-like architectures as Redux-Observable, RxFeedback, Cycle.js, ReSwift, etc. The main difference between these architectures (including PromisedArchitectureKit) and MVP is that they introduce constrains of how the UI state can be updated, in order to enforce correctness and make apps easier to reason about.  
 
 
-Which make PromisedArchitectureKit different from these Redux-like architectures is it uses feedback loops (called Reactions) to run effects and encodes them into part of state and uses Promises from PromiseKit to wrap the effects.  
-
+Which make PromisedArchitectureKit different from these Redux-like architectures is it uses
+async reducers (using PromiseKit) to wrap the effects, then it runs side effects for you and calls the UI with the result.
 
 **PromisedArchitectureKit runs side effects for you. Your code stays 100% pure.**
 
@@ -47,24 +50,21 @@ PromisedArchitectureKit itself is very simple. How it looks:
 ```swift
 self.system = System.pure(
 	initialState: State.start,
-	reducer: State.reduce,
-	uiBindings: [view.updateUI],
-	actions: actions,
-	reactions: reactions()
+   	reducer: State.reduce,
+   	uiBindings: [view?.updateUI]
 )
 ```
 
 ### The core concept
-Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum. For example, the state of a Ecommerce **Product detail page** app might look like this:
+Each screen of your app (and the whole app) has a state itself. in PromisedArchitectureKit, this state is represented as an Enum. For example, the state of a Ecommerce **Product detail page (PDP)** app might look like this:
 
 ```swift
-enum State: Equatable {
+enum State {
     case start
     case loading
-    case showProduct(Product)
-    case showError(String)
-    case addingToCart(Product)
-    case showProductDidAddToCart(Product)
+    case productLoaded(Product)
+    case addedToCart(Product, CartResponse)
+    case error(Error)
 }
 ```
 In this screen, the app loads the product, then it can show the product or an error. After the product is loaded, the user can add it to the basket.  
@@ -80,58 +80,51 @@ That “f” function will be the UI binding function that we will see later on.
 
 ```swift
 enum Event {
-    case willLoadProduct
-    case didLoadProduct(Product)
-    case didThrowError(String)
-    case willAddToCart
-    case didAddToCart(Product)
+    case loadProduct
+    case addToCart
 }
 ```
 
 Enforcing that every change is described as an event lets us have a clear understanding of what’s going on in the app. If something changed, we know why it changed.  
 
- Events are like breadcrumbs of what has happened. Finally, to tie state and actions together, we write a function called **reducer**. A reducer it’s just a function that **takes state and action as arguments, and returns the next state of the app**:
+ Events are like breadcrumbs of what has happened. Finally, to tie state and actions together, we write a function called **reducer**. A reducer it’s just a function that **takes state and action as arguments, and returns the next state of the app (asynchronously)**:
  
-`(State, Event) -> State`  
+`(State, Event) -> AsyncResult<State>`
 
-We write a reducer for every state of every screen. For the PDP screen:  
+AsyncResult is just a wrapper of Promise.  
+
+We write a reducer function for every state of every screen. For the PDP screen:  
  
  
  ```swift
-     static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
             
-        case .willLoadProduct:
-            return .loading
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
             
-        case .didLoadProduct(let product):
-            return .showProduct(product)
+        case .addToCart:
+            let productResult = getProduct(cached: true)
+            let userResult = getUser()
             
-        case .didThrowError(let errorDescription):
-            return .showError(errorDescription)
-            
-        case .willAddToCart:
-            var product: Product? {
-                switch state {
-                case let .showProduct(product): return product
-                case let .showProductDidAddToCart(product): return product
-                default: return nil
-                }
+            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+                let (product, user) = pair
+                
+                return addToCart(product: product, user: user)
+                    .map { State.addedToCart(product, $0) }
+                    .mapErrorRecover{ State.error($0) }
             }
-            
-            if let product = product {
-                return .addingToCart(product)
-            } else {
-                return .showError("No product")
-            }
-            
-        case .didAddToCart(let product):
-            return .showProductDidAddToCart(product)
+            .stateWhenLoading(State.loading)
         }
     }
  ```
 
-Notice that the reducer is a pure function, in terms of referencial transparency, and for state S and event E, it always return the same state, and has no side effects.
+Notice that the reducer is a pure function, in terms of referencial transparency, and for state S and event E, it always return the same state description, and has no side effects (it only returns descriptions of the effects, the library will run them for you).
 
 
 **This is basically the whole idea of PromisedArchitectureKit**. Note that we haven’t used any PromisedArchitectureKit APIs. It comes with a few utilities to facilitate this pattern, but the main idea is that you describe how your state is updated over time in response to events, and 90% of the code you write is just plain Swift, so the UI logic can be tested with ease.
@@ -156,27 +149,81 @@ A Promise is used for handling asynchronous operations. PromisedArchitectureKit 
 
 That function returns a Promise that will return a product. It waits for 5 seconds and then returns the product. It simulates a network call.
 
-### Add reactions to states
+### Don't fear the AsyncResult
+AsyncResult is just a wrapper over Promise that provides it more power. It is just like a Promise on steroids.
 
-If we want to load the product from the baceknd, we would require a network call, which is a side effect and it is asynchronous. Som to achieve it, we will use reactions to state. The way of dealing with effects in PromisedArchitectureKit is encode them into part of state and then design the reactions.
+But don't worry. If you whole app uses Promises, it is ok. You can keep using promises and transform them to AsyncResults on the reducer function with ease.
 
+How to get an AsyncResult from a Promise?:
 
-**A reaction is just a computation that is triggered in some cases, depending on the current state of the system, that launches a new event, and produces a new state.**
-
-
-A whole PromisedArchitectureKit loop begins from a UserAction that triggers an event. Then the reducer function computes a new state from the event and previous state. PromisedArchitectureKit checks if any rection must be triggered from the new state. If so, the reaction produces a new event asynchronously (by executing side effects) and a new state if computed from the reaction’s event.
-
-We can add a loading reaction in our code:
-
-```swift
-let loadingReaction = Reaction<State,Event>.react({ _ in
-	self.getProduct().map { Event.didLoadProduct($0) }
-}, when: {
-	$0 == State.loading
-})
+```
+let asyncResult = AsyncResult(promise)
 ```
 
-It loads the product from the backend and then it triggers a `didLoadProduct` event with the loaded product. This reaction is only triggered **when** the current state of the app is `loading`. 
+And that's it!
+
+### What if i want to make network calls, DB calls, and so on?
+
+If we want to load the product from the backend, we would require a network call, which is a side effect and it is asynchronous.
+
+In order to achieve it, we will use Promises to handle async code. As the reducer funciton returns the new state async, we can map Promises to new states.
+
+For example, we are in Start state, and we want to load a product and go to loadedProduct state, when a loadProduct event is triggered. In the reducer we do:
+
+```swift 
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+        switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
+            
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
+                
+        (...)
+
+```
+
+What is this doing? Step by step:
+
+* When a loadProduct event is triggered
+
+```swift
+	switch event {
+   		case .loadProduct:
+```
+* We get the product (AsyncResult<Product>)
+
+```swift
+	let productResult = getProduct(cached: false)
+``` 
+
+* In case of the product would be retrieved successfully we will return a loadedProduct state:
+
+```swift
+return productResult
+ 	.map { State.productLoaded($0) }
+
+```
+
+* We want to send the UI a loading state while the Promise being executed until it gets resolved, so the UI can show a loading indicator:
+
+```swift
+.stateWhenLoading(State.loading)
+```
+
+* In case of the product **wouldn't** be retrieved successfully we will return a error state:
+
+```swift
+	.mapErrorRecover { State.error($0) }
+
+```
+
+Pretty easy and neat.
+
+**There is no side effect here: there is only a description of it. Actually, the side effect will be executed by the library.**
 
 ### Update the view
 
@@ -186,38 +233,169 @@ Example:
 
 ```swift
     func updateUI(state: State) {
-        hideLoading()
-        disableBuyButton()
-        cartLabel.text = "No products"
+        showLoading()
+        addToCartButton.isEnabled = false
+        refreshButton.isHidden = false
 
+    
         switch state {
         case .start:
-            print("Starting")
-            disableBuyButton()
-            
+            productTitleLabel.text = ""
+            descriptionLabel.text = ""
+            imageView.image = nil
         case .loading:
+            refreshButton.isHidden = true
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
+        case .productLoaded(let product):
+            productTitleLabel.text = product.title
+            descriptionLabel.text = product.description
+            updateImage(with: product.imageUrl)
+            addToCartButton.isEnabled = true
+            hideLoading()
             
-        case .addingToCart(_):
-            showLoading()
+        case .error(let error):
+            descriptionLabel.text = error.localizedDescription
+            hideLoading()
             
-        case .showProductDidAddToCart(let product):
-            cartLabel.text = product
-            enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
+        case .addedToCart(_, let cartResponse):
+            hideLoading()
+            addToCartButton.isEnabled = true
+            showAddedToCartAlert(cartResponse)
         }
-        
+
         print(state)
     }
 ```
 
 So, the presenter will compute the next state, and will send it to the view. The view will draw itself accordingly.  
 
+
+## What the library does under the hood?
+The library's core is small. It can be pasted here:
+
+```swift
+//
+//  System.swift
+//  PromisedArchitectureKit
+//
+//  Created by Pallas, Ricardo on 7/3/18.
+//
+
+import Foundation
+import PromiseKit
+
+public final class System<State, Event> {
+
+    internal var eventQueue = [Event]()
+    internal var callback: ((State) -> ())? = nil
+
+    internal var initialState: State
+    internal var reducer: (State, Event) -> AsyncResult<State>
+    internal var uiBindings: [((State) -> ())?]
+    internal var currentState: State
+
+    private init(
+        initialState: State,
+        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        uiBindings: [((State) -> ())?]
+        ) {
+        self.initialState = initialState
+        self.reducer = reducer
+        self.uiBindings = uiBindings
+        self.currentState = initialState
+    }
+
+    public static func pure(
+        initialState: State,
+        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        uiBindings: [((State) -> ())?]
+        ) -> System {
+        
+        let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings)
+        system.bindUI(initialState)
+        return system
+    }
+
+    public func addLoopCallback(callback: @escaping (State)->()){
+        self.callback = callback
+    }
+
+    var actionExecuting = false
+
+    public func sendEvent(_ action: Event) {
+        assert(Thread.isMainThread)
+        if actionExecuting {
+            self.eventQueue.append(action)
+        } else {
+            actionExecuting = true
+            let _ = doLoop(action).done { state in
+                assert(Thread.isMainThread, "PromisedArchitectureKit: Final callback must be run on main thread")
+                if let callback = self.callback {
+                    callback(state)
+                }
+                self.actionExecuting = false
+                if let nextEvent = self.eventQueue.first {
+                    self.eventQueue.removeFirst()
+                    self.sendEvent(nextEvent)
+                }
+            }
+        }
+    }
+
+    private func doLoop(_ event: Event) -> Promise<State> {
+        return Promise.value(event)
+            .then { event -> Promise<State> in
+
+                let asyncResultState = self.reducer(self.currentState, event)
+
+                if let stateWhenLoading = asyncResultState.loadingResult {
+                    self.bindUI(stateWhenLoading)
+                }
+
+                return asyncResultState.promise
+            }
+            .map { state in
+                self.currentState = state
+                self.bindUI(state)
+                return state
+            }
+    }
+
+    private func bindUI(_ state: State) {
+        self.uiBindings.forEach { uiBinding in
+            uiBinding?(state)
+        }
+    }
+}
+
+```
+
+It executes loops on the `doLoop` function. What is a loop?
+It is the whole cycle where and event is triggered, a new state is calculated and the UI is updated accordingly.
+
+Following the load product example:
+
+1. A `loadProduct` event is sent by the view. The `sendEvent` function is called that calls the `doLoop` function.
+
+2. The `doLoop` function executed the side effects thrown by the reducer and gets the new state async. If a loading state was specified it notifies the UI before running the side effects. After that, it updates the current state and calls the UI with the new state.
+
+**To sum up: The system listens to events, runs side effects to get the new state and notifies the UI that the state has changed.**
+
+## Why should I use PromisedArchiterueKit V2 ?
+
+As said before, the goal of the library is to put constraints to enforce correcness and make architecure easier to read and easier to reason about. These contraints are: there a finite number of states for each screen, there are a finite number of events that can change the state, and the library decides when to update the UI.
+
+Those restrictions comes with advantages, the trade off is worth it. 
+The main advantages the library provides are: 
+
+* The library executes **all side effects for you** so your code stays pure.
+* It updates the view when needed, you don't need to take care.
+* You can know what the screen is about, reading the State enum.
+* You know in compile-time that your view handles are states.
+* You know what actions can be done on the screen, reading the Event enum.
+* You know that all events are handled by the presenter on compile time.
+* A single function will be called on every state change. That can be useful to have good analytics, for example. 
 
 ## Example
 
@@ -226,94 +404,85 @@ To run the example project, clone the repo, and run `pod install` from the Examp
 ViewController's code:
 
 ```swift
+import UIKit
+import PromisedArchitectureKit
+
 class ViewController: UIViewController, View {
     
     @IBOutlet weak var productTitleLabel: UILabel!
-    @IBOutlet weak var cartLabel: UILabel!
-    @IBOutlet weak var errorLabel: UILabel!
-    @IBOutlet weak var buyButton: UIButton!
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var descriptionLabel: UILabel!
+    @IBOutlet weak var addToCartButton: UIButton!
+    @IBOutlet weak var refreshButton: UIButton!
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
-    var loadProductAction: CustomAction<State, Event>! = nil
-    var addToCartAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        initActions()
         
-        presenter = Presenter(view: self, actions: [loadProductAction, addToCartAction])
+        presenter = Presenter(view: self)
         presenter.controllerLoaded()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadProductAction.execute()
-    }
-    
-    private func initActions() {
-        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
-        addToCartAction = CustomAction<State, Event>(trigger: Event.willAddToCart)
+        presenter.sendEvent(Event.loadProduct)
     }
     
     private func addLoadingIndicator() {
-        indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        indicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.gray)
         indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         indicator.center = view.center
-        self.view.addSubview(indicator)
-        self.view.bringSubview(toFront: indicator)
+        view.addSubview(indicator)
+        view.bringSubviewToFront(indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     // MARK: - User Actions
     @IBAction func didTapRefresh(_ sender: Any) {
-        loadProductAction.execute()
+        presenter.sendEvent(Event.loadProduct)
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        addToCartAction.execute()
+        presenter.sendEvent(Event.addToCart)
     }
 
     // MARK: - User Outputs
     func updateUI(state: State) {
-        hideLoading()
-        disableBuyButton()
-        cartLabel.text = "No products"
+        showLoading()
+        addToCartButton.isEnabled = false
+        refreshButton.isHidden = false
 
+    
         switch state {
         case .start:
-            print("Starting")
-            disableBuyButton()
-            
+            productTitleLabel.text = ""
+            descriptionLabel.text = ""
+            imageView.image = nil
         case .loading:
+            refreshButton.isHidden = true
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
+        case .productLoaded(let product):
+            productTitleLabel.text = product.title
+            descriptionLabel.text = product.description
+            updateImage(with: product.imageUrl)
+            addToCartButton.isEnabled = true
+            hideLoading()
             
-        case .addingToCart(_):
-            showLoading()
+        case .error(let error):
+            descriptionLabel.text = error.localizedDescription
+            hideLoading()
             
-        case .showProductDidAddToCart(let product):
-            cartLabel.text = product
-            enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
+        case .addedToCart(_, let cartResponse):
+            hideLoading()
+            addToCartButton.isEnabled = true
+            showAddedToCartAlert(cartResponse)
         }
-        
+
         print(state)
-    }
-    
-    private func enableBuyButton() {
-        buyButton.alpha = 1.0
-        buyButton.isEnabled = true
-    }
-    
-    private func disableBuyButton() {
-        buyButton.alpha = 0.30
-        buyButton.isEnabled = false
     }
     
     private func showLoading() {
@@ -322,6 +491,20 @@ class ViewController: UIViewController, View {
     
     private func hideLoading() {
         indicator.stopAnimating()
+    }
+    
+    private func showAddedToCartAlert(_ message: String) {
+        let alertController = UIAlertController(title: "Added to cart", message:
+            message, preferredStyle: UIAlertController.Style.alert)
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default,handler: nil))
+        self.present(alertController, animated: true, completion: nil)
+    }
+    
+    private func updateImage(with urlPath: String) {
+        if let url = URL(string: urlPath), let data = try? Data(contentsOf: url) {
+            let image = UIImage(data: data)
+            imageView.image = image
+        }
     }
 
 }
@@ -335,136 +518,173 @@ import Foundation
 import PromisedArchitectureKit
 import PromiseKit
 
-typealias Product = String
+typealias CartResponse = String
+typealias User = String
 
-protocol View {
+struct Product: Equatable {
+    let title: String
+    let description: String
+    let imageUrl: String
+}
+
+protocol View: class {
     func updateUI(state: State)
 }
 
 // MARK: - Events
 enum Event {
-    case willLoadProduct
-    case didLoadProduct(Product)
-    case didThrowError(String)
-    case willAddToCart
-    case didAddToCart(Product)
+    case loadProduct
+    case addToCart
 }
 
 // MARK: - State
-enum State: Equatable {
+enum State {
     case start
     case loading
-    case showProduct(Product)
-    case showError(String)
-    case addingToCart(Product)
-    case showProductDidAddToCart(Product)
+    case productLoaded(Product)
+    case addedToCart(Product, CartResponse)
+    case error(Error)
     
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
             
-        case .willLoadProduct:
-            return .loading
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
             
-        case .didLoadProduct(let product):
-            return .showProduct(product)
+        case .addToCart:
+            let productResult = getProduct(cached: true)
+            let userResult = getUser()
             
-        case .didThrowError(let errorDescription):
-            return .showError(errorDescription)
-            
-        case .willAddToCart:
-            var product: Product? {
-                switch state {
-                case let .showProduct(product): return product
-                case let .showProductDidAddToCart(product): return product
-                default: return nil
-                }
+            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+                let (product, user) = pair
+                
+                return addToCart(product: product, user: user)
+                    .map { State.addedToCart(product, $0) }
+                    .mapErrorRecover{ State.error($0) }
             }
-            
-            if let product = product {
-                return .addingToCart(product)
-            } else {
-                return .showError("No product")
-            }
-            
-        case .didAddToCart(let product):
-            return .showProductDidAddToCart(product)
+            .stateWhenLoading(State.loading)
         }
     }
+}
+
+fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
+    let delay: DispatchTime = cached ? .now() : .now() + 3
+    let product = Product(
+        title: "Yeezy Triple White",
+        description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
+        imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
+    
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: delay) {
+            seal.fulfill(product)
+        }
+    }
+
+    return AsyncResult<Product>(promise)
+}
+
+fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
+    let randomNumber = Int.random(in: 1..<10)
+
+    let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
+    let promise = Promise<CartResponse>.value("Product: \(product.title) added to cart for user: \(user)")
+
+    if randomNumber < 5 {
+        return AsyncResult<CartResponse>(failedPromise)
+    } else {
+        return AsyncResult<CartResponse>(promise)
+    }
+}
+
+fileprivate func getUser() -> AsyncResult<User> {
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            seal.fulfill("Richi")
+        }
+    }
+
+    return AsyncResult<User>(promise)
 }
 
 // MARK: - Presenter
 class Presenter {
     
     var system: System<State, Event>?
-    let view: View
-    let actions: [Action<State, Event>]
+    weak var view: View?
     
-    init(view: View, actions: [Action<State, Event>]) {
+    init(view: View) {
         self.view = view
-        self.actions = actions
+    }
+    
+    func sendEvent(_ event: Event) {
+        system?.sendEvent(event)
     }
     
     func controllerLoaded() {
-
-        self.system = System.pure(
+        system = System.pure(
             initialState: State.start,
             reducer: State.reduce,
-            uiBindings: [view.updateUI],
-            actions: actions,
-            reactions: reactions()
+            uiBindings: [view?.updateUI]
         )
-    }
-    
-    func reactions() -> [Reaction<State,Event>]{
-        let loadingReaction = Reaction<State,Event>.react({ _ in
-            self.getProduct().map { Event.didLoadProduct($0) }
-        }, when: {
-            $0 == State.loading
-        })
-        
-        let addingToCartReaction = Reaction<State,Event>.react({ state in
-            guard case let .addingToCart(product) = state else { preconditionFailure() }
-            return self.addToCart(product: product)
-                .map { Event.didAddToCart($0)}
-                .recover({ error -> Promise<Event> in
-                    return Promise.value(Event.didThrowError("Error adding to cart"))
-                })
-            
-            
-        }, when: { state in
-            guard case let .addingToCart(product) = state else { return false }
-            return state == State.addingToCart(product)
-        })
-        return [loadingReaction, addingToCartReaction]
-    }
-    
-    func getProduct() -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                seal.fulfill("Yeezy 500")
-            }
-        }
-    }
-    
-    // It returns error randomly
-    func addToCart(product: Product) -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                let number = Int(arc4random_uniform(10))
-                
-                if number < 5 {
-                    seal.fulfill("\(product) added to cart")
-                    
-                } else {
-                    let error = NSError(domain: "Error", code: 2333, userInfo: nil)
-                    seal.reject(error)
-                }
-            }
-        }
     }
 }
 
 ```
+
+## Bonus: analytics
+In case you want to add analytics to your app, you will end up having lots of calls to some `TrackingService.trackEvent` method among the code. Which, sometimes, can become an mess.
+
+Luckily, PromisedArchitectureKit, includes the "addLoopCallback(callback: @escaping (State)->())" function, that will be called every time a state change occurs. The function receives the new state as a parameter, which can be use for analytics.
+
+### Analytics Example
+
+```swift
+func handleAnalitycs(state: State) {
+    switch state {
+    case .start:
+        EventTracker.trackEvent(event: .pdpShown)
+        
+    case .loading:
+        EventTracker.trackEvent(event: .pdpLoading)
+
+    case .productLoaded(let product):
+        EventTracker.trackEvent(event: .productLoaded, attr: product)
+
+    case .error(let error):
+        EventTracker.trackEvent(event: .pdpError, attr: error)
+
+        
+    case .addedToCart(let product, _):
+        EventTracker.trackEvent(event: .pdpAddedToCart, attr: product)
+
+    }
+}
+
+
+func controllerLoaded() {
+    system = System.pure(
+        initialState: State.start,
+        reducer: State.reduce,
+        uiBindings: [view?.updateUI]
+    )
+        
+    system?.addLoopCallback(callback: handleAnalytics)
+}
+    
+```
+
+By adding the `handleAnalytics` method as a system's loop callback, we have all analytics in the same place, centralized.
+
+
+
+ 
+
+Disclaimer: This will only work with analytics related to logic. If you need to track things like "User did scroll", you will need to do it the same way as without the library.
 
 
 ## Author
