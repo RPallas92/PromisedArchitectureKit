@@ -383,11 +383,19 @@ Following the load product example:
 **To sum up: The system listens to events, runs side effects to get the new state and notifies the UI that the state has changed.**
 
 ## Why should I use PromisedArchiterueKit V2 ?
-TODO: explain why
 
-explaing main advantages (what it does - telegram chat)  
-explain analytics
+As said before, the goal of the library is to put constraints to enforce correcness and make architecure easier to read and easier to reason about. These contraints are: there a finite number of states for each screen, there are a finite number of events that can change the state, and the library decides when to update the UI.
 
+Those restrictions comes with advantages, the trade off is worth it. 
+The main advantages the library provides are: 
+
+* The library executes **all side effects for you** so your code stays pure.
+* It updates the view when needed, you don't need to take care.
+* You can know what the screen is about, reading the State enum.
+* You know in compile-time that your view handles are states.
+* You know what actions can be done on the screen, reading the Event enum.
+* You know that all events are handled by the presenter on compile time.
+* A single function will be called on every state change. That can be useful to have good analytics, for example. 
 
 ## Example
 
@@ -396,94 +404,85 @@ To run the example project, clone the repo, and run `pod install` from the Examp
 ViewController's code:
 
 ```swift
+import UIKit
+import PromisedArchitectureKit
+
 class ViewController: UIViewController, View {
     
     @IBOutlet weak var productTitleLabel: UILabel!
-    @IBOutlet weak var cartLabel: UILabel!
-    @IBOutlet weak var errorLabel: UILabel!
-    @IBOutlet weak var buyButton: UIButton!
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var descriptionLabel: UILabel!
+    @IBOutlet weak var addToCartButton: UIButton!
+    @IBOutlet weak var refreshButton: UIButton!
     
     var presenter: Presenter! = nil
     var indicator: UIActivityIndicatorView! = nil
-    var loadProductAction: CustomAction<State, Event>! = nil
-    var addToCartAction: CustomAction<State, Event>! = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
         addLoadingIndicator()
-        initActions()
         
-        presenter = Presenter(view: self, actions: [loadProductAction, addToCartAction])
+        presenter = Presenter(view: self)
         presenter.controllerLoaded()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadProductAction.execute()
-    }
-    
-    private func initActions() {
-        loadProductAction = CustomAction<State, Event>(trigger: Event.willLoadProduct)
-        addToCartAction = CustomAction<State, Event>(trigger: Event.willAddToCart)
+        presenter.sendEvent(Event.loadProduct)
     }
     
     private func addLoadingIndicator() {
-        indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.gray)
+        indicator = UIActivityIndicatorView(style: UIActivityIndicatorView.Style.gray)
         indicator.frame = CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height)
         indicator.center = view.center
-        self.view.addSubview(indicator)
-        self.view.bringSubview(toFront: indicator)
+        view.addSubview(indicator)
+        view.bringSubviewToFront(indicator)
         UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     // MARK: - User Actions
     @IBAction func didTapRefresh(_ sender: Any) {
-        loadProductAction.execute()
+        presenter.sendEvent(Event.loadProduct)
     }
     
     @IBAction func didTapAddToCart(_ sender: Any) {
-        addToCartAction.execute()
+        presenter.sendEvent(Event.addToCart)
     }
 
     // MARK: - User Outputs
     func updateUI(state: State) {
-        hideLoading()
-        disableBuyButton()
-        cartLabel.text = "No products"
+        showLoading()
+        addToCartButton.isEnabled = false
+        refreshButton.isHidden = false
 
+    
         switch state {
         case .start:
-            print("Starting")
-            disableBuyButton()
-            
+            productTitleLabel.text = ""
+            descriptionLabel.text = ""
+            imageView.image = nil
         case .loading:
+            refreshButton.isHidden = true
             showLoading()
             
-        case .showProduct(let product):
-            productTitleLabel.text = product
+        case .productLoaded(let product):
+            productTitleLabel.text = product.title
+            descriptionLabel.text = product.description
+            updateImage(with: product.imageUrl)
+            addToCartButton.isEnabled = true
+            hideLoading()
             
-        case .addingToCart(_):
-            showLoading()
+        case .error(let error):
+            descriptionLabel.text = error.localizedDescription
+            hideLoading()
             
-        case .showProductDidAddToCart(let product):
-            cartLabel.text = product
-            enableBuyButton()
-
-        case .showError(let errorDescription):
-            errorLabel.text = errorDescription
+        case .addedToCart(_, let cartResponse):
+            hideLoading()
+            addToCartButton.isEnabled = true
+            showAddedToCartAlert(cartResponse)
         }
-        
+
         print(state)
-    }
-    
-    private func enableBuyButton() {
-        buyButton.alpha = 1.0
-        buyButton.isEnabled = true
-    }
-    
-    private func disableBuyButton() {
-        buyButton.alpha = 0.30
-        buyButton.isEnabled = false
     }
     
     private func showLoading() {
@@ -492,6 +491,20 @@ class ViewController: UIViewController, View {
     
     private func hideLoading() {
         indicator.stopAnimating()
+    }
+    
+    private func showAddedToCartAlert(_ message: String) {
+        let alertController = UIAlertController(title: "Added to cart", message:
+            message, preferredStyle: UIAlertController.Style.alert)
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertAction.Style.default,handler: nil))
+        self.present(alertController, animated: true, completion: nil)
+    }
+    
+    private func updateImage(with urlPath: String) {
+        if let url = URL(string: urlPath), let data = try? Data(contentsOf: url) {
+            let image = UIImage(data: data)
+            imageView.image = image
+        }
     }
 
 }
@@ -505,136 +518,173 @@ import Foundation
 import PromisedArchitectureKit
 import PromiseKit
 
-typealias Product = String
+typealias CartResponse = String
+typealias User = String
 
-protocol View {
+struct Product: Equatable {
+    let title: String
+    let description: String
+    let imageUrl: String
+}
+
+protocol View: class {
     func updateUI(state: State)
 }
 
 // MARK: - Events
 enum Event {
-    case willLoadProduct
-    case didLoadProduct(Product)
-    case didThrowError(String)
-    case willAddToCart
-    case didAddToCart(Product)
+    case loadProduct
+    case addToCart
 }
 
 // MARK: - State
-enum State: Equatable {
+enum State {
     case start
     case loading
-    case showProduct(Product)
-    case showError(String)
-    case addingToCart(Product)
-    case showProductDidAddToCart(Product)
+    case productLoaded(Product)
+    case addedToCart(Product, CartResponse)
+    case error(Error)
     
-    static func reduce(state: State, event: Event) -> State {
+    static func reduce(state: State, event: Event) -> AsyncResult<State> {
         switch event {
+
+        case .loadProduct:
+            let productResult = getProduct(cached: false)
             
-        case .willLoadProduct:
-            return .loading
+            return productResult
+                .map { State.productLoaded($0) }
+                .stateWhenLoading(State.loading)
+                .mapErrorRecover { State.error($0) }
             
-        case .didLoadProduct(let product):
-            return .showProduct(product)
+        case .addToCart:
+            let productResult = getProduct(cached: true)
+            let userResult = getUser()
             
-        case .didThrowError(let errorDescription):
-            return .showError(errorDescription)
-            
-        case .willAddToCart:
-            var product: Product? {
-                switch state {
-                case let .showProduct(product): return product
-                case let .showProductDidAddToCart(product): return product
-                default: return nil
-                }
+            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+                let (product, user) = pair
+                
+                return addToCart(product: product, user: user)
+                    .map { State.addedToCart(product, $0) }
+                    .mapErrorRecover{ State.error($0) }
             }
-            
-            if let product = product {
-                return .addingToCart(product)
-            } else {
-                return .showError("No product")
-            }
-            
-        case .didAddToCart(let product):
-            return .showProductDidAddToCart(product)
+            .stateWhenLoading(State.loading)
         }
     }
+}
+
+fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
+    let delay: DispatchTime = cached ? .now() : .now() + 3
+    let product = Product(
+        title: "Yeezy Triple White",
+        description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
+        imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
+    
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: delay) {
+            seal.fulfill(product)
+        }
+    }
+
+    return AsyncResult<Product>(promise)
+}
+
+fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
+    let randomNumber = Int.random(in: 1..<10)
+
+    let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
+    let promise = Promise<CartResponse>.value("Product: \(product.title) added to cart for user: \(user)")
+
+    if randomNumber < 5 {
+        return AsyncResult<CartResponse>(failedPromise)
+    } else {
+        return AsyncResult<CartResponse>(promise)
+    }
+}
+
+fileprivate func getUser() -> AsyncResult<User> {
+    let promise = Promise { seal in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            seal.fulfill("Richi")
+        }
+    }
+
+    return AsyncResult<User>(promise)
 }
 
 // MARK: - Presenter
 class Presenter {
     
     var system: System<State, Event>?
-    let view: View
-    let actions: [Action<State, Event>]
+    weak var view: View?
     
-    init(view: View, actions: [Action<State, Event>]) {
+    init(view: View) {
         self.view = view
-        self.actions = actions
+    }
+    
+    func sendEvent(_ event: Event) {
+        system?.sendEvent(event)
     }
     
     func controllerLoaded() {
-
-        self.system = System.pure(
+        system = System.pure(
             initialState: State.start,
             reducer: State.reduce,
-            uiBindings: [view.updateUI],
-            actions: actions,
-            reactions: reactions()
+            uiBindings: [view?.updateUI]
         )
-    }
-    
-    func reactions() -> [Reaction<State,Event>]{
-        let loadingReaction = Reaction<State,Event>.react({ _ in
-            self.getProduct().map { Event.didLoadProduct($0) }
-        }, when: {
-            $0 == State.loading
-        })
-        
-        let addingToCartReaction = Reaction<State,Event>.react({ state in
-            guard case let .addingToCart(product) = state else { preconditionFailure() }
-            return self.addToCart(product: product)
-                .map { Event.didAddToCart($0)}
-                .recover({ error -> Promise<Event> in
-                    return Promise.value(Event.didThrowError("Error adding to cart"))
-                })
-            
-            
-        }, when: { state in
-            guard case let .addingToCart(product) = state else { return false }
-            return state == State.addingToCart(product)
-        })
-        return [loadingReaction, addingToCartReaction]
-    }
-    
-    func getProduct() -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                seal.fulfill("Yeezy 500")
-            }
-        }
-    }
-    
-    // It returns error randomly
-    func addToCart(product: Product) -> Promise<Product> {
-        return Promise { seal in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                let number = Int(arc4random_uniform(10))
-                
-                if number < 5 {
-                    seal.fulfill("\(product) added to cart")
-                    
-                } else {
-                    let error = NSError(domain: "Error", code: 2333, userInfo: nil)
-                    seal.reject(error)
-                }
-            }
-        }
     }
 }
 
 ```
+
+## Bonus: analytics
+In case you want to add analytics to your app, you will end up having lots of calls to some `TrackingService.trackEvent` method among the code. Which, sometimes, can become an mess.
+
+Luckily, PromisedArchitectureKit, includes the "addLoopCallback(callback: @escaping (State)->())" function, that will be called every time a state change occurs. The function receives the new state as a parameter, which can be use for analytics.
+
+### Analytics Example
+
+```swift
+func handleAnalitycs(state: State) {
+    switch state {
+    case .start:
+        EventTracker.trackEvent(event: .pdpShown)
+        
+    case .loading:
+        EventTracker.trackEvent(event: .pdpLoading)
+
+    case .productLoaded(let product):
+        EventTracker.trackEvent(event: .productLoaded, attr: product)
+
+    case .error(let error):
+        EventTracker.trackEvent(event: .pdpError, attr: error)
+
+        
+    case .addedToCart(let product, _):
+        EventTracker.trackEvent(event: .pdpAddedToCart, attr: product)
+
+    }
+}
+
+
+func controllerLoaded() {
+    system = System.pure(
+        initialState: State.start,
+        reducer: State.reduce,
+        uiBindings: [view?.updateUI]
+    )
+        
+    system?.addLoopCallback(callback: handleAnalytics)
+}
+    
+```
+
+By adding the `handleAnalytics` method as a system's loop callback, we have all analytics in the same place, centralized.
+
+
+
+ 
+
+Disclaimer: This will only work with analytics related to logic. If you need to track things like "User did scroll", you will need to do it the same way as without the library.
 
 
 ## Author
@@ -644,6 +694,3 @@ Ricardo Pallás
 ## License
 
 PromisedArchitectureKit is available under the MIT license. See the LICENSE file for more info.
-
-### TO DO
-Explain changes between V1 and V2
