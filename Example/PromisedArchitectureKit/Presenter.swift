@@ -37,22 +37,22 @@ enum State {
     case addedToCart(Product, CartResponse)
     case error(Error)
     
-    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+    static func reduce(state: State, event: Event) -> Promise<State> {
         switch event {
 
         case .loadProduct:
-            let productResult = getProduct(cached: false)
+            let productPromise = getProduct(cached: false)
             
-            return productResult
+            return productPromise
                 .map { State.productLoaded($0) }
                 .stateWhenLoading(State.loading)
                 .mapErrorRecover { State.error($0) }
             
         case .addToCart:
-            let productResult = getProduct(cached: true)
-            let userResult = getUser()
+            let productPromise = getProduct(cached: true)
+            let userPromise = getUser()
             
-            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+            return Promise<(Product, User)>.zip(productPromise, userPromise).flatMap { pair -> Promise<State> in
                 let (product, user) = pair
                 
                 return addToCart(product: product, user: user)
@@ -64,43 +64,40 @@ enum State {
     }
 }
 
-fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
+fileprivate func getProduct(cached: Bool) -> Promise<Product> {
     let delay: DispatchTime = cached ? .now() : .now() + 3
     let product = Product(
         title: "Yeezy Triple White",
         description: "YEEZY Boost 350 V2 “Triple White,” aka “Cream”. \n adidas Originals has officially announced its largest-ever YEEZY Boost 350 V2 release. The “Triple White” iteration of one of Kanye West’s most popular silhouettes will drop again on September 21 for a retail price of $220. The sneaker previously dropped under the “Cream” alias.",
         imageUrl: "https://static.highsnobiety.com/wp-content/uploads/2018/08/20172554/adidas-originals-yeezy-boost-350-v2-triple-white-release-date-price-02.jpg")
     
-    let promise = Promise { seal in
+    return Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: delay) {
             seal.fulfill(product)
         }
     }
-
-    return AsyncResult<Product>(promise)
 }
 
-fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
+fileprivate func addToCart(product: Product, user: User) -> Promise<CartResponse> {
     let randomNumber = Int.random(in: 1..<10)
 
     let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
     let promise = Promise<CartResponse>.value("Product: \(product.title) added to cart for user: \(user)")
 
     if randomNumber < 5 {
-        return AsyncResult<CartResponse>(failedPromise)
+        return failedPromise
     } else {
-        return AsyncResult<CartResponse>(promise)
+        return promise
     }
 }
 
-fileprivate func getUser() -> AsyncResult<User> {
-    let promise = Promise { seal in
+fileprivate func getUser() -> Promise<User> {
+    return Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             seal.fulfill("Richi")
         }
     }
 
-    return AsyncResult<User>(promise)
 }
 
 // MARK: - Presenter

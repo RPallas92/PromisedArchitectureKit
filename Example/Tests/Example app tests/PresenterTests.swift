@@ -47,7 +47,7 @@ class PresenterTest: XCTestCase {
     func testAddToCart() {
         let expect = expectation(description: "testAddToCart")
 
-        let expectedResponse = "Product: Yeezy 500 addded to cart for user: Richi"
+        let expectedResponse = "Product: Yeezy Triple White addded to cart for user: Richi"
         let expectedError = NSError(domain: "Error adding to cart",code: 15, userInfo: nil)
         
         let mockedView = ViewMock()

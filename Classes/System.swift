@@ -14,13 +14,13 @@ public final class System<State, Event> {
     internal var callback: ((State) -> ())? = nil
 
     internal var initialState: State
-    internal var reducer: (State, Event) -> AsyncResult<State>
+    internal var reducer: (State, Event) -> Promise<State>
     internal var uiBindings: [((State) -> ())?]
     internal var currentState: State
 
     private init(
         initialState: State,
-        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        reducer: @escaping (State, Event) -> Promise<State>,
         uiBindings: [((State) -> ())?]
         ) {
         self.initialState = initialState
@@ -31,7 +31,7 @@ public final class System<State, Event> {
 
     public static func pure(
         initialState: State,
-        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        reducer: @escaping (State, Event) -> Promise<State>,
         uiBindings: [((State) -> ())?]
         ) -> System {
         
@@ -70,13 +70,13 @@ public final class System<State, Event> {
         return Promise.value(event)
             .then { event -> Promise<State> in
 
-                let asyncResultState = self.reducer(self.currentState, event)
+                let statePromise = self.reducer(self.currentState, event)
 
-                if let stateWhenLoading = asyncResultState.loadingResult {
+                if let stateWhenLoading = statePromise.loadingState {
                     self.bindUI(stateWhenLoading)
                 }
 
-                return asyncResultState.promise
+                return statePromise
             }
             .map { state in
                 self.currentState = state
