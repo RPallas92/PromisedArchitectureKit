@@ -53,7 +53,6 @@ public final class System<State, Event> {
         } else {
             actionExecuting = true
             let _ = doLoop(action).done { state in
-                assert(Thread.isMainThread, "PromisedArchitectureKit: Final callback must be run on main thread")
                 if let callback = self.callback {
                     callback(state)
                 }
