@@ -27,12 +27,12 @@ enum TestState {
     case showingProduct(Product)
     case showingError(Error)
     
-    static func reduce(state: TestState, event: TestEvent) -> AsyncResult<TestState> {
+    static func reduce(state: TestState, event: TestEvent) -> Promise<TestState> {
         switch event {
         case .loadProduct:
-            let productResult = getProduct()
+            let productPromise = getProduct()
             
-            return productResult
+            return productPromise
                 .map { TestState.showingProduct($0) }
                 .stateWhenLoading(TestState.loading)
                 .mapErrorRecover { TestState.showingError($0) }
@@ -40,14 +40,12 @@ enum TestState {
     }
 }
 
-func getProduct() -> AsyncResult<Product> {
-    let promise = Promise { seal in
+func getProduct() -> Promise<Product> {
+    return Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: .now()) {
             seal.fulfill(mockProduct)
         }
     }
-    
-    return AsyncResult<Product>(promise)
 }
 
 class ArchitectureKitTests: XCTestCase {
