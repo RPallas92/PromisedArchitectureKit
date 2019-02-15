@@ -11,12 +11,13 @@ import PromiseKit
 public final class System<State, Event> {
 
     internal var eventQueue = [Event]()
-    internal var callback: ((State) -> ())? = nil
+    internal var callback: ((State, [State]) -> ())? = nil
 
     internal var initialState: State
     internal var reducer: (State, Event) -> Promise<State>
     internal var uiBindings: [((State) -> ())?]
     internal var currentState: State
+    internal var historyOfStates: [State] = []
 
     private init(
         initialState: State,
@@ -36,11 +37,12 @@ public final class System<State, Event> {
         ) -> System {
         
         let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings)
+        system.historyOfStates.append(initialState)
         system.bindUI(initialState)
         return system
     }
 
-    public func addLoopCallback(callback: @escaping (State)->()){
+    public func addLoopCallback(callback: @escaping (State, [State])->()){
         self.callback = callback
     }
 
@@ -53,9 +55,6 @@ public final class System<State, Event> {
         } else {
             actionExecuting = true
             let _ = doLoop(action).done { state in
-                if let callback = self.callback {
-                    callback(state)
-                }
                 self.actionExecuting = false
                 if let nextEvent = self.eventQueue.first {
                     self.eventQueue.removeFirst()
@@ -68,10 +67,11 @@ public final class System<State, Event> {
     private func doLoop(_ event: Event) -> Promise<State> {
         return Promise.value(event)
             .then { event -> Promise<State> in
-
+                
                 let statePromise = self.reducer(self.currentState, event)
 
                 if let stateWhenLoading = statePromise.loadingState {
+                    self.historyOfStates.append(stateWhenLoading)
                     self.bindUI(stateWhenLoading)
                 }
 
@@ -79,6 +79,7 @@ public final class System<State, Event> {
             }
             .map { state in
                 self.currentState = state
+                self.historyOfStates.append(state)
                 self.bindUI(state)
                 return state
             }
@@ -88,5 +89,6 @@ public final class System<State, Event> {
         self.uiBindings.forEach { uiBinding in
             uiBinding?(state)
         }
+        self.callback?(state, self.historyOfStates)
     }
 }
