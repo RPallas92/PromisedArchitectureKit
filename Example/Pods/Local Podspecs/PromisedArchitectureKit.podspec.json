@@ -1,6 +1,6 @@
 {
   "name": "PromisedArchitectureKit",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "summary": "Simplest architecture for PromiseKit",
   "description": "Simplest architecture for PromiseKit.\nThis architectural approach, fits on the View layer of Clean Architecture. It is an alternative to Model-View-Presenter or Model-View-ViewModel, and it is strongly inspired by Redux.\n\nThe idea is to constrain the changes to view state in order to enforce correctness. Changes to state are explicity documented by Events and by a pure reducer function. This approach also allows testing presentation logic with ease (it also includes a mechanism to inject dependencies, such views, API Clients, etc.)",
   "homepage": "https://github.com/rpallas92/PromisedArchitectureKit",
@@ -13,7 +13,7 @@
   },
   "source": {
     "git": "https://github.com/rpallas92/PromisedArchitectureKit.git",
-    "tag": "2.1.0"
+    "tag": "2.2.0"
   },
   "platforms": {
     "ios": "8.0"
@@ -24,5 +24,6 @@
       "~> 6.0"
     ]
   },
+  "swift_versions": "4.2",
   "swift_version": "4.2"
 }

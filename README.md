@@ -51,7 +51,9 @@ PromisedArchitectureKit itself is very simple. How it looks:
 self.system = System.pure(
 	initialState: State.start,
    	reducer: State.reduce,
-   	uiBindings: [view?.updateUI]
+   	uiBindings: [ { [weak self] state in
+    	self?.view?.updateUI(state: state)
+    }]
 )
 ```
 
@@ -89,15 +91,13 @@ Enforcing that every change is described as an event lets us have a clear unders
 
  Events are like breadcrumbs of what has happened. Finally, to tie state and actions together, we write a function called **reducer**. A reducer it’s just a function that **takes state and action as arguments, and returns the next state of the app (asynchronously)**:
  
-`(State, Event) -> AsyncResult<State>`
-
-AsyncResult is just a wrapper of Promise.  
+`(State, Event) -> Promise<State>`
 
 We write a reducer function for every state of every screen. For the PDP screen:  
  
  
  ```swift
-    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+    static func reduce(state: State, event: Event) -> Promise<State> {
         switch event {
 
         case .loadProduct:
@@ -112,7 +112,7 @@ We write a reducer function for every state of every screen. For the PDP screen:
             let productResult = getProduct(cached: true)
             let userResult = getUser()
             
-            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+            return Promise<(Product, User)>.zip(productResult, userResult).flatMap { pair -> Promise<State> in
                 let (product, user) = pair
                 
                 return addToCart(product: product, user: user)
@@ -149,19 +149,6 @@ A Promise is used for handling asynchronous operations. PromisedArchitectureKit 
 
 That function returns a Promise that will return a product. It waits for 5 seconds and then returns the product. It simulates a network call.
 
-### Don't fear the AsyncResult
-AsyncResult is just a wrapper over Promise that provides it more power. It is just like a Promise on steroids.
-
-But don't worry. If you whole app uses Promises, it is ok. You can keep using promises and transform them to AsyncResults on the reducer function with ease.
-
-How to get an AsyncResult from a Promise?:
-
-```
-let asyncResult = AsyncResult(promise)
-```
-
-And that's it!
-
 ### What if i want to make network calls, DB calls, and so on?
 
 If we want to load the product from the backend, we would require a network call, which is a side effect and it is asynchronous.
@@ -171,7 +158,7 @@ In order to achieve it, we will use Promises to handle async code. As the reduce
 For example, we are in Start state, and we want to load a product and go to loadedProduct state, when a loadProduct event is triggered. In the reducer we do:
 
 ```swift 
-    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+    static func reduce(state: State, event: Event) -> Promise<State> {
         switch event {
 
         case .loadProduct:
@@ -194,7 +181,7 @@ What is this doing? Step by step:
 	switch event {
    		case .loadProduct:
 ```
-* We get the product (AsyncResult<Product>)
+* We get the product (Promise<Product>)
 
 ```swift
 	let productResult = getProduct(cached: false)
@@ -268,7 +255,12 @@ Example:
     }
 ```
 
-So, the presenter will compute the next state, and will send it to the view. The view will draw itself accordingly.  
+So, the presenter will compute the next state, and will send it to the view. The view will draw itself accordingly.
+
+**Warning:**
+
+**Always pass the update UI function to the System as a function that does not retain the view. Otherwise you will have a memory leak.
+In the examples, we send the view's updateUI using weak self.**
 
 
 ## What the library does under the hood?
@@ -288,16 +280,17 @@ import PromiseKit
 public final class System<State, Event> {
 
     internal var eventQueue = [Event]()
-    internal var callback: ((State) -> ())? = nil
+    internal var callback: ((State, [State]) -> ())? = nil
 
     internal var initialState: State
-    internal var reducer: (State, Event) -> AsyncResult<State>
+    internal var reducer: (State, Event) -> Promise<State>
     internal var uiBindings: [((State) -> ())?]
     internal var currentState: State
+    internal var historyOfStates: [State] = []
 
     private init(
         initialState: State,
-        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        reducer: @escaping (State, Event) -> Promise<State>,
         uiBindings: [((State) -> ())?]
         ) {
         self.initialState = initialState
@@ -308,16 +301,17 @@ public final class System<State, Event> {
 
     public static func pure(
         initialState: State,
-        reducer: @escaping (State, Event) -> AsyncResult<State>,
+        reducer: @escaping (State, Event) -> Promise<State>,
         uiBindings: [((State) -> ())?]
         ) -> System {
         
         let system = System<State,Event>(initialState: initialState, reducer: reducer, uiBindings: uiBindings)
+        system.historyOfStates.append(initialState)
         system.bindUI(initialState)
         return system
     }
 
-    public func addLoopCallback(callback: @escaping (State)->()){
+    public func addLoopCallback(callback: @escaping (State, [State])->()){
         self.callback = callback
     }
 
@@ -330,10 +324,6 @@ public final class System<State, Event> {
         } else {
             actionExecuting = true
             let _ = doLoop(action).done { state in
-                assert(Thread.isMainThread, "PromisedArchitectureKit: Final callback must be run on main thread")
-                if let callback = self.callback {
-                    callback(state)
-                }
                 self.actionExecuting = false
                 if let nextEvent = self.eventQueue.first {
                     self.eventQueue.removeFirst()
@@ -346,17 +336,19 @@ public final class System<State, Event> {
     private func doLoop(_ event: Event) -> Promise<State> {
         return Promise.value(event)
             .then { event -> Promise<State> in
+                
+                let statePromise = self.reducer(self.currentState, event)
 
-                let asyncResultState = self.reducer(self.currentState, event)
-
-                if let stateWhenLoading = asyncResultState.loadingResult {
+                if let stateWhenLoading = statePromise.loadingState {
+                    self.historyOfStates.append(stateWhenLoading)
                     self.bindUI(stateWhenLoading)
                 }
 
-                return asyncResultState.promise
+                return statePromise
             }
             .map { state in
                 self.currentState = state
+                self.historyOfStates.append(state)
                 self.bindUI(state)
                 return state
             }
@@ -366,8 +358,10 @@ public final class System<State, Event> {
         self.uiBindings.forEach { uiBinding in
             uiBinding?(state)
         }
+        self.callback?(state, self.historyOfStates)
     }
 }
+
 
 ```
 
@@ -545,7 +539,7 @@ enum State {
     case addedToCart(Product, CartResponse)
     case error(Error)
     
-    static func reduce(state: State, event: Event) -> AsyncResult<State> {
+    static func reduce(state: State, event: Event) -> Promise<State> {
         switch event {
 
         case .loadProduct:
@@ -560,7 +554,7 @@ enum State {
             let productResult = getProduct(cached: true)
             let userResult = getUser()
             
-            return AsyncResult<(Product, User)>.zip(productResult, userResult).flatMap { pair -> AsyncResult<State> in
+            return Promise<(Product, User)>.zip(productResult, userResult).flatMap { pair -> Promise<State> in
                 let (product, user) = pair
                 
                 return addToCart(product: product, user: user)
@@ -572,7 +566,7 @@ enum State {
     }
 }
 
-fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
+fileprivate func getProduct(cached: Bool) -> Promise<Product> {
     let delay: DispatchTime = cached ? .now() : .now() + 3
     let product = Product(
         title: "Yeezy Triple White",
@@ -585,30 +579,30 @@ fileprivate func getProduct(cached: Bool) -> AsyncResult<Product> {
         }
     }
 
-    return AsyncResult<Product>(promise)
+    return Promise<Product>(promise)
 }
 
-fileprivate func addToCart(product: Product, user: User) -> AsyncResult<CartResponse> {
+fileprivate func addToCart(product: Product, user: User) -> Promise<CartResponse> {
     let randomNumber = Int.random(in: 1..<10)
 
     let failedPromise = Promise<CartResponse>(error: NSError(domain: "Error adding to cart",code: 15, userInfo: nil))
     let promise = Promise<CartResponse>.value("Product: \(product.title) added to cart for user: \(user)")
 
     if randomNumber < 5 {
-        return AsyncResult<CartResponse>(failedPromise)
+        return Promise<CartResponse>(failedPromise)
     } else {
-        return AsyncResult<CartResponse>(promise)
+        return Promise<CartResponse>(promise)
     }
 }
 
-fileprivate func getUser() -> AsyncResult<User> {
+fileprivate func getUser() -> Promise<User> {
     let promise = Promise { seal in
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             seal.fulfill("Richi")
         }
     }
 
-    return AsyncResult<User>(promise)
+    return Promise<User>(promise)
 }
 
 // MARK: - Presenter
@@ -629,7 +623,9 @@ class Presenter {
         system = System.pure(
             initialState: State.start,
             reducer: State.reduce,
-            uiBindings: [view?.updateUI]
+            uiBindings: [ { [weak self] state in
+							self?.view?.updateUI(state: state)
+						}]
         )
     }
 }
@@ -665,12 +661,13 @@ func handleAnalitycs(state: State) {
     }
 }
 
-
 func controllerLoaded() {
     system = System.pure(
         initialState: State.start,
         reducer: State.reduce,
-        uiBindings: [view?.updateUI]
+        uiBindings: [ { [weak self] state in
+					self?.view?.updateUI(state: state)
+				}]
     )
         
     system?.addLoopCallback(callback: handleAnalytics)

@@ -1,5 +1,5 @@
 PODS:
-  - PromisedArchitectureKit (2.1.0):
+  - PromisedArchitectureKit (2.2.0):
     - PromiseKit (~> 6.0)
   - PromiseKit (6.3.4):
     - PromiseKit/CorePromise (= 6.3.4)
@@ -23,9 +23,9 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  PromisedArchitectureKit: a1a62c1d8fd345d10ad42c7ea6423bafdada2170
+  PromisedArchitectureKit: 4f67e1031896e280927a5f3c3dee07d414396af2
   PromiseKit: e1425568123ec844a944c93f2bcb29d511d39cf5
 
 PODFILE CHECKSUM: 080eb5051e9a60074fe60befcdf5571873744176
 
-COCOAPODS: 1.6.0
+COCOAPODS: 1.7.5

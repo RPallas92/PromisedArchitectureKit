@@ -113,12 +113,14 @@ class Presenter {
     func sendEvent(_ event: Event) {
         system?.sendEvent(event)
     }
-    
+
     func controllerLoaded() {
         system = System.pure(
             initialState: State.start,
             reducer: State.reduce,
-            uiBindings: [view?.updateUI]
+            uiBindings: [ { [weak self] state in
+                self?.view?.updateUI(state: state)
+            }]
         )
     }
 }
